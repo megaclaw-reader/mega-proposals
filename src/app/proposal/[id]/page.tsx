@@ -319,21 +319,32 @@ export default function ProposalPage() {
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">{pricingAgent.name}</h3>
                   <div className="mb-4">
-                    {proposal.pricing.discountAmount > 0 ? (
+                    {proposal.pricing.termMonths > 1 ? (
+                      // Show upfront total per agent
                       <>
-                        <span className="text-lg text-gray-400 line-through mr-2">
-                          ${pricingAgent.basePrice.toLocaleString()}/mo
-                        </span>
-                        <div className="text-3xl font-bold text-green-600">
-                          ${Math.round(pricingAgent.finalPrice).toLocaleString()}
+                        {proposal.pricing.discountAmount > 0 && (
+                          <span className="text-lg text-gray-400 line-through mr-2">
+                            ${(pricingAgent.basePrice * proposal.pricing.termMonths).toLocaleString()}
+                          </span>
+                        )}
+                        <div className="text-3xl font-bold text-gray-900">
+                          ${Math.round(pricingAgent.finalPrice * proposal.pricing.termMonths).toLocaleString()}
+                        </div>
+                        <span className="text-sm text-gray-500">${pricingAgent.finalPrice.toLocaleString()}/mo × {proposal.pricing.termMonths} months</span>
+                      </>
+                    ) : (
+                      // Monthly — show per month
+                      <>
+                        {proposal.pricing.discountAmount > 0 && (
+                          <span className="text-lg text-gray-400 line-through mr-2">
+                            ${pricingAgent.basePrice.toLocaleString()}/mo
+                          </span>
+                        )}
+                        <div className="text-3xl font-bold text-gray-900">
+                          ${pricingAgent.finalPrice.toLocaleString()}
                           <span className="text-base font-normal text-gray-600">/mo</span>
                         </div>
                       </>
-                    ) : (
-                      <div className="text-3xl font-bold text-gray-900">
-                        ${pricingAgent.finalPrice.toLocaleString()}
-                        <span className="text-base font-normal text-gray-600">/mo</span>
-                      </div>
                     )}
                   </div>
                   <p className="text-sm text-gray-600">{
@@ -346,22 +357,26 @@ export default function ProposalPage() {
               ))}
             </div>
 
-            {/* Combined Monthly Investment */}
+            {/* Total Investment */}
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg p-8 text-white">
               <div className="text-center">
-                <h3 className="text-xl font-semibold mb-2">Combined Monthly Investment</h3>
+                <h3 className="text-xl font-semibold mb-2">
+                  {proposal.pricing.termMonths > 1 ? 'Total Due Upfront' : 'Monthly Investment'}
+                </h3>
                 <div className="text-4xl font-bold mb-2">
-                  ${proposal.pricing.total.toLocaleString()}
-                  <span className="text-xl font-normal">/mo</span>
+                  ${proposal.pricing.termMonths > 1 
+                    ? proposal.pricing.upfrontTotal.toLocaleString()
+                    : proposal.pricing.total.toLocaleString()}
+                  {proposal.pricing.termMonths === 1 && <span className="text-xl font-normal">/mo</span>}
                 </div>
-                {proposal.pricing.discountAmount > 0 && (
-                  <p className="text-green-300 text-sm mb-1">
-                    You save ${Math.round(proposal.pricing.discountAmount).toLocaleString()}/mo with your discount
-                  </p>
-                )}
                 {proposal.pricing.termMonths > 1 && (
                   <p className="text-blue-100 text-sm">
-                    Paid upfront: <strong>${proposal.pricing.upfrontTotal.toLocaleString()}</strong> ({getTermDisplayName(proposal.contractTerm).toLowerCase()} commitment)
+                    ${proposal.pricing.total.toLocaleString()}/mo × {proposal.pricing.termMonths} months ({getTermDisplayName(proposal.contractTerm).toLowerCase()} commitment)
+                  </p>
+                )}
+                {proposal.pricing.discountAmount > 0 && (
+                  <p className="text-green-300 text-sm mt-1">
+                    Includes ${Math.round(proposal.pricing.discountAmount * proposal.pricing.termMonths).toLocaleString()} in savings with your discount
                   </p>
                 )}
               </div>
