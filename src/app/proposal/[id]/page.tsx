@@ -8,26 +8,11 @@ import { getServiceScope, EXECUTIVE_SUMMARY_CONTENT, SERVICE_DESCRIPTIONS } from
 import { decodeProposal } from '@/lib/encode';
 import { format } from 'date-fns';
 
-const TERM_PRICING = {
-  'seo': { annual: 699, bi_annual: 749, quarterly: 849, monthly: 999 },
-  'paid_ads': { annual: 1399, bi_annual: 1499, quarterly: 1699, monthly: 1999 },
-  'seo_paid_combo': { annual: 2099, bi_annual: 2249, quarterly: 2548, monthly: 2998 },
-  'website': { annual: 279, bi_annual: 299, quarterly: 339, monthly: 399 }
-};
-
-const TERM_LABELS = {
-  annual: 'Annual',
-  bi_annual: 'Bi-Annual', 
-  quarterly: 'Quarterly',
-  monthly: 'Monthly'
-};
-
 export default function ProposalPage() {
   const params = useParams();
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [selectedTerm, setSelectedTerm] = useState<ContractTerm>('annual');
   const proposalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,7 +25,6 @@ export default function ProposalPage() {
         config.discountPercentage || 0
       );
       setProposal({ ...config, pricing });
-      setSelectedTerm(config.contractTerm);
     }
     setLoading(false);
   }, [params.id]);
@@ -112,21 +96,6 @@ export default function ProposalPage() {
   }
 
   // Calculate pricing for different terms for the investment summary
-  const calculateTermPricing = (term: ContractTerm) => {
-    const pricing = calculatePricing(proposal.selectedAgents, term, proposal.discountPercentage || 0);
-    return pricing;
-  };
-
-  // Get pricing for selected agents based on term
-  const getAgentPrice = (agent: string, term: ContractTerm) => {
-    if (proposal.selectedAgents.includes('seo' as any) && proposal.selectedAgents.includes('paid_ads' as any) && 
-        (agent === 'seo' || agent === 'paid_ads')) {
-      // Show combo pricing when both are selected
-      return TERM_PRICING['seo_paid_combo'][term];
-    }
-    return TERM_PRICING[agent as keyof typeof TERM_PRICING]?.[term] || 0;
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Action Bar - Fixed at top, not included in PDF */}
@@ -177,9 +146,9 @@ export default function ProposalPage() {
             </p>
           </section>
 
-          {/* Select Your Services */}
+          {/* Your Services */}
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Select Your Services</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Your Services</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {proposal.selectedAgents.map((agent) => (
                 <div key={agent} className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
@@ -276,111 +245,51 @@ export default function ProposalPage() {
           {/* Investment Summary */}
           <section className="space-y-8">
             <h2 className="text-2xl font-bold text-gray-900">Investment Summary</h2>
-            
-            {/* Term Selector Tabs */}
-            <div className="bg-gray-100 p-1 rounded-lg w-fit">
-              <div className="grid grid-cols-4 gap-1">
-                {(['annual', 'bi_annual', 'quarterly', 'monthly'] as ContractTerm[]).map((term) => (
-                  <button
-                    key={term}
-                    onClick={() => setSelectedTerm(term)}
-                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                      selectedTerm === term
-                        ? 'bg-white text-blue-600 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    {TERM_LABELS[term]}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <p className="text-sm text-gray-500 font-medium">{getTermDisplayName(proposal.contractTerm)} Commitment</p>
 
             {/* Pricing Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {proposal.selectedAgents.includes('seo') && proposal.selectedAgents.includes('paid_ads') ? (
-                // Show combo pricing when both SEO and Paid Ads are selected
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg border-2 border-blue-200 p-6 relative">
-                  <div className="absolute -top-3 left-6">
-                    <span className="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
-                      COMBO DEAL
+              {proposal.pricing.agents.map((pricingAgent, index) => (
+                <div key={index} className={`rounded-lg border p-6 ${
+                  pricingAgent.agent === 'seo_paid_combo' 
+                    ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200' 
+                    : 'bg-white border-gray-200'
+                }`}>
+                  <div className="mb-3">
+                    <span className="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
+                      {pricingAgent.agent === 'seo_paid_combo' ? 'SEO/GEO + PAID ADS' 
+                        : pricingAgent.agent === 'seo' ? 'SEO/GEO' 
+                        : pricingAgent.agent === 'paid_ads' ? 'PAID ADS' 
+                        : 'WEB'}
                     </span>
                   </div>
-                  <div className="mt-2">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      SEO & Paid Ads Agent
-                    </h3>
-                    <div className="text-3xl font-bold text-gray-900 mb-4">
-                      ${getAgentPrice('seo_paid_combo', selectedTerm).toLocaleString()}
-                      <span className="text-base font-normal text-gray-600">/month</span>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center text-sm">
-                        <svg className="w-4 h-4 text-green-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                        <span className="text-gray-700">Complete SEO/GEO optimization</span>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{pricingAgent.name}</h3>
+                  <div className="mb-4">
+                    {proposal.pricing.discountAmount > 0 ? (
+                      <>
+                        <span className="text-lg text-gray-400 line-through mr-2">
+                          ${pricingAgent.basePrice.toLocaleString()}/mo
+                        </span>
+                        <div className="text-3xl font-bold text-green-600">
+                          ${Math.round(pricingAgent.finalPrice).toLocaleString()}
+                          <span className="text-base font-normal text-gray-600">/mo</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-3xl font-bold text-gray-900">
+                        ${pricingAgent.finalPrice.toLocaleString()}
+                        <span className="text-base font-normal text-gray-600">/mo</span>
                       </div>
-                      <div className="flex items-center text-sm">
-                        <svg className="w-4 h-4 text-green-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                        <span className="text-gray-700">AI-powered paid advertising</span>
-                      </div>
-                      <div className="flex items-center text-sm">
-                        <svg className="w-4 h-4 text-green-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                        <span className="text-gray-700">Dedicated account managers</span>
-                      </div>
-                      <div className="flex items-center text-sm">
-                        <svg className="w-4 h-4 text-green-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                        <span className="text-gray-700">Ongoing optimization</span>
-                      </div>
-                    </div>
+                    )}
                   </div>
+                  <p className="text-sm text-gray-600">{
+                    pricingAgent.agent === 'seo_paid_combo' ? 'Full service SEO/GEO optimization and AI-powered paid advertising, bundled for maximum impact'
+                    : pricingAgent.agent === 'seo' ? 'Complete SEO/GEO strategy, content creation, technical optimization, link building, and ongoing management'
+                    : pricingAgent.agent === 'paid_ads' ? 'Full service ads management, campaign launches, budget optimization, audience targeting, and automated reporting'
+                    : 'Full website development, hosting, security, analytics, and unlimited changes with 2-day turnaround'
+                  }</p>
                 </div>
-              ) : (
-                // Show individual pricing cards
-                proposal.selectedAgents.map((agent) => (
-                  <div key={agent} className="bg-white rounded-lg border border-gray-200 p-6">
-                    <div className="mb-4">
-                      <span className="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
-                        {SERVICE_DESCRIPTIONS[agent].badge}
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      {SERVICE_DESCRIPTIONS[agent].title}
-                    </h3>
-                    <div className="text-3xl font-bold text-gray-900 mb-4">
-                      ${getAgentPrice(agent, selectedTerm).toLocaleString()}
-                      <span className="text-base font-normal text-gray-600">/month</span>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center text-sm">
-                        <svg className="w-4 h-4 text-green-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                        <span className="text-gray-700">Dedicated expert assigned</span>
-                      </div>
-                      <div className="flex items-center text-sm">
-                        <svg className="w-4 h-4 text-green-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                        <span className="text-gray-700">AI-powered optimization</span>
-                      </div>
-                      <div className="flex items-center text-sm">
-                        <svg className="w-4 h-4 text-green-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                        <span className="text-gray-700">Monthly strategy reviews</span>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
+              ))}
             </div>
 
             {/* Combined Monthly Investment */}
@@ -388,18 +297,17 @@ export default function ProposalPage() {
               <div className="text-center">
                 <h3 className="text-xl font-semibold mb-2">Combined Monthly Investment</h3>
                 <div className="text-4xl font-bold mb-2">
-                  ${calculateTermPricing(selectedTerm).total.toLocaleString()}
-                  <span className="text-xl font-normal">/month</span>
+                  ${proposal.pricing.total.toLocaleString()}
+                  <span className="text-xl font-normal">/mo</span>
                 </div>
-                <p className="text-blue-100 text-sm">
-                  {selectedTerm !== 'monthly' && (
-                    <>Paid upfront: ${calculateTermPricing(selectedTerm).upfrontTotal.toLocaleString()} • </>
-                  )}
-                  {TERM_LABELS[selectedTerm]} commitment
-                </p>
-                {selectedTerm !== 'monthly' && (
-                  <p className="text-blue-200 text-sm mt-1">
-                    Non-monthly terms are paid upfront for the full term
+                {proposal.pricing.discountAmount > 0 && (
+                  <p className="text-green-300 text-sm mb-1">
+                    You save ${Math.round(proposal.pricing.discountAmount).toLocaleString()}/mo with your discount
+                  </p>
+                )}
+                {proposal.pricing.termMonths > 1 && (
+                  <p className="text-blue-100 text-sm">
+                    Paid upfront: <strong>${proposal.pricing.upfrontTotal.toLocaleString()}</strong> ({getTermDisplayName(proposal.contractTerm).toLowerCase()} commitment)
                   </p>
                 )}
               </div>
