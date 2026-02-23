@@ -33,82 +33,118 @@ export default function ProposalPage() {
     if (!proposalRef.current || !proposal) return;
     setGenerating(true);
     try {
-      const { toBlob } = await import('html-to-image');
+      const { toCanvas } = await import('html-to-image');
       const { jsPDF } = await import('jspdf');
 
       const el = proposalRef.current;
 
-      // Clone into an offscreen container at fixed letter width
+      // Clone into offscreen container at fixed letter width
       const wrapper = document.createElement('div');
-      wrapper.style.position = 'absolute';
-      wrapper.style.left = '-9999px';
-      wrapper.style.top = '0';
-      wrapper.style.width = '768px';
-      wrapper.style.background = '#ffffff';
+      wrapper.style.cssText = 'position:absolute;left:-9999px;top:0;width:768px;background:#fff;';
       
       const clone = el.cloneNode(true) as HTMLElement;
-      clone.style.width = '768px';
-      clone.style.maxWidth = '768px';
-      clone.style.margin = '0';
-      clone.style.padding = '32px';
-      clone.style.background = '#ffffff';
+      clone.style.cssText = 'width:768px;max-width:768px;margin:0;background:#fff;';
       
-      // Remove the action bar from clone
-      const actionBars = clone.querySelectorAll('.print\\:hidden');
-      actionBars.forEach(ab => ab.remove());
-
+      // Remove action bar from clone
+      clone.querySelectorAll('.print\\:hidden').forEach(ab => ab.remove());
+      
+      // Mark section boundaries with data attributes for page breaking
+      // Each .break-before-page section should start on a new page
       wrapper.appendChild(clone);
       document.body.appendChild(wrapper);
 
-      // Wait for layout
-      await new Promise(r => setTimeout(r, 200));
+      // Wait for layout reflow
+      await new Promise(r => setTimeout(r, 300));
 
-      const blob = await toBlob(clone, {
-        pixelRatio: 3,
+      // Get positions of page break elements relative to clone top
+      const cloneTop = clone.getBoundingClientRect().top;
+      const breakEls = clone.querySelectorAll('.break-before-page');
+      const breakPositions: number[] = [];
+      breakEls.forEach(bel => {
+        const pos = bel.getBoundingClientRect().top - cloneTop;
+        if (pos > 10) breakPositions.push(pos);
+      });
+
+      const totalHeight = clone.scrollHeight;
+      const pxWidth = 768;
+
+      // Build section ranges: [start, end) in pixels
+      const sections: { start: number; end: number }[] = [];
+      let prevStart = 0;
+      for (const bp of breakPositions) {
+        sections.push({ start: prevStart, end: bp });
+        prevStart = bp;
+      }
+      sections.push({ start: prevStart, end: totalHeight });
+
+      // Render the full clone as one canvas
+      const fullCanvas = await toCanvas(clone, {
+        pixelRatio: 2,
         backgroundColor: '#ffffff',
-        width: 768,
-        height: clone.scrollHeight,
-        style: {
-          margin: '0',
-          padding: '32px',
-        },
+        width: pxWidth,
+        height: totalHeight,
       });
 
       document.body.removeChild(wrapper);
 
-      if (!blob) throw new Error('Failed to render');
-
-      // Convert blob to image and split into pages
-      const img = new Image();
-      const imgUrl = URL.createObjectURL(blob);
-      
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = reject;
-        img.src = imgUrl;
-      });
-
       const pdf = new jsPDF('p', 'pt', 'letter');
       const pageW = 612; // letter width in points
       const pageH = 792; // letter height in points
-      const imgW = pageW;
-      const imgH = (img.height * imgW) / img.width;
+      const scale = fullCanvas.width / pxWidth; // pixel ratio
+      const pxToPoints = pageW / (pxWidth * scale); // convert canvas px to PDF points
 
-      // Find CSS page break positions from the clone
-      let heightLeft = imgH;
-      let position = 0;
+      let isFirstPage = true;
 
-      pdf.addImage(img.src, 'PNG', 0, position, imgW, imgH);
-      heightLeft -= pageH;
+      for (const section of sections) {
+        const sectionHeightPx = (section.end - section.start) * scale;
+        const sectionHeightPts = sectionHeightPx * pxToPoints;
 
-      while (heightLeft > 0) {
-        position -= pageH;
-        pdf.addPage();
-        pdf.addImage(img.src, 'PNG', 0, position, imgW, imgH);
-        heightLeft -= pageH;
+        // If section fits on one page, render it as one chunk
+        if (sectionHeightPts <= pageH) {
+          if (!isFirstPage) pdf.addPage();
+          
+          const sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width = fullCanvas.width;
+          sliceCanvas.height = Math.ceil(sectionHeightPx);
+          const ctx = sliceCanvas.getContext('2d')!;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+          ctx.drawImage(fullCanvas, 0, -(section.start * scale));
+          
+          pdf.addImage(
+            sliceCanvas.toDataURL('image/png'),
+            'PNG', 0, 0, pageW, sectionHeightPts
+          );
+          isFirstPage = false;
+        } else {
+          // Section is taller than one page — split it into page-sized chunks
+          const sectionStartPx = section.start * scale;
+          let offset = 0;
+          
+          while (offset < sectionHeightPx) {
+            if (!isFirstPage) pdf.addPage();
+            
+            const chunkHeight = Math.min(pageH / pxToPoints, sectionHeightPx - offset);
+            const chunkHeightPts = chunkHeight * pxToPoints;
+            
+            const sliceCanvas = document.createElement('canvas');
+            sliceCanvas.width = fullCanvas.width;
+            sliceCanvas.height = Math.ceil(chunkHeight);
+            const ctx = sliceCanvas.getContext('2d')!;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+            ctx.drawImage(fullCanvas, 0, -(sectionStartPx + offset));
+            
+            pdf.addImage(
+              sliceCanvas.toDataURL('image/png'),
+              'PNG', 0, 0, pageW, chunkHeightPts
+            );
+            
+            offset += chunkHeight;
+            isFirstPage = false;
+          }
+        }
       }
-
-      URL.revokeObjectURL(imgUrl);
 
       const filename = `${proposal.companyName.replace(/\s+/g, '_')}_MEGA_SOW.pdf`;
       pdf.save(filename);
@@ -266,7 +302,7 @@ export default function ProposalPage() {
 
                 {/* Implementation Timeline */}
                 {serviceContent.timeline && (
-                  <div>
+                  <div className="break-before-page">
                     <h3 className="text-xl font-semibold text-gray-900 mb-6">Implementation Timeline</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {serviceContent.timeline.map((phase, index) => (
