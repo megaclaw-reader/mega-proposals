@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { Proposal, SignatureData } from '@/lib/types';
+import { Proposal } from '@/lib/types';
 import { calculatePricing, formatPrice, getTermDisplayName } from '@/lib/pricing';
 import { getServiceScope, EXECUTIVE_SUMMARY_CONTENT, IMPLEMENTATION_TIMELINE, SERVICE_DESCRIPTIONS } from '@/lib/content';
 import { decodeProposal } from '@/lib/encode';
@@ -12,13 +12,6 @@ export default function ProposalPage() {
   const params = useParams();
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [loading, setLoading] = useState(true);
-  const [signed, setSigned] = useState(false);
-  const [signing, setSigning] = useState(false);
-  const [signatureForm, setSignatureForm] = useState({
-    fullName: '',
-    email: '',
-    agreedToTerms: false
-  });
   const proposalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -34,14 +27,6 @@ export default function ProposalPage() {
     }
     setLoading(false);
   }, [params.id]);
-
-  const handleSign = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSigning(true);
-    // Client-side signature capture — store locally
-    setSigned(true);
-    setSigning(false);
-  };
 
   const downloadPDF = async () => {
     try {
@@ -301,134 +286,6 @@ export default function ProposalPage() {
             </div>
           </section>
 
-          {/* E-Signature Block */}
-          {signed ? (
-            /* Signed Confirmation */
-            <section className="bg-green-50 border border-green-200 rounded-lg p-8">
-              <div className="text-center mb-6">
-                <div className="text-green-600 text-6xl mb-4">✓</div>
-                <h2 className="text-2xl font-bold text-green-800 mb-2">Proposal Signed</h2>
-                <p className="text-green-700">This proposal has been accepted.</p>
-              </div>
-              
-              <div className="bg-white rounded-lg p-6 border border-green-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Signature Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p><strong>Signed by:</strong> {signatureForm.fullName}</p>
-                    <p><strong>Email:</strong> {signatureForm.email}</p>
-                    <p><strong>Date & Time:</strong> {format(new Date(), 'MMMM dd, yyyy \'at\' h:mm a')}</p>
-                  </div>
-                  <div>
-                    <p><strong>Terms Agreed:</strong> Yes</p>
-                  </div>
-                </div>
-              </div>
-            </section>
-          ) : (
-            /* Signature Form */
-            <section className="bg-gray-50 rounded-lg p-8 border border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Electronic Signature</h2>
-              <p className="text-gray-700 mb-6">
-                By signing below, you agree to the terms and conditions outlined in this proposal.
-                This constitutes a legally binding agreement.
-              </p>
-              
-              <form onSubmit={handleSign} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Full Legal Name *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={signatureForm.fullName}
-                      onChange={(e) => setSignatureForm(prev => ({ ...prev, fullName: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Enter your full legal name"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email Address *
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={signatureForm.email}
-                      onChange={(e) => setSignatureForm(prev => ({ ...prev, email: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Enter your email address"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Date
-                  </label>
-                  <input
-                    type="text"
-                    disabled
-                    value={format(new Date(), 'MMMM dd, yyyy')}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 text-gray-600"
-                  />
-                </div>
-
-                <div className="flex items-start">
-                  <input
-                    type="checkbox"
-                    id="terms"
-                    required
-                    checked={signatureForm.agreedToTerms}
-                    onChange={(e) => setSignatureForm(prev => ({ ...prev, agreedToTerms: e.target.checked }))}
-                    className="mt-1 mr-3 text-blue-600"
-                  />
-                  <label htmlFor="terms" className="text-sm text-gray-700">
-                    I agree to MEGA's{' '}
-                    <a 
-                      href="https://www.gomega.ai/legal/terms-of-use" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-blue-600 underline hover:text-blue-800"
-                    >
-                      Terms of Use
-                    </a>
-                    {' '}and{' '}
-                    <a 
-                      href="https://www.gomega.ai/legal/privacy-policy"
-                      target="_blank"
-                      rel="noopener noreferrer" 
-                      className="text-blue-600 underline hover:text-blue-800"
-                    >
-                      Privacy Policy
-                    </a>
-                  </label>
-                </div>
-
-                <div className="bg-white rounded-lg p-6 border border-gray-200">
-                  <h4 className="font-semibold text-gray-900 mb-2">Legal Notice</h4>
-                  <p className="text-sm text-gray-600">
-                    By clicking "Sign & Accept Proposal" below, you are creating an electronic signature 
-                    that has the same legal force and effect as a handwritten signature. This proposal 
-                    will become a legally binding contract upon acceptance.
-                  </p>
-                </div>
-
-                <div className="flex justify-center">
-                  <button
-                    type="submit"
-                    disabled={signing || !signatureForm.agreedToTerms}
-                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-8 py-3 rounded-lg font-semibold text-lg transition-colors min-w-[200px]"
-                  >
-                    {signing ? 'Processing...' : 'Sign & Accept Proposal'}
-                  </button>
-                </div>
-              </form>
-            </section>
-          )}
         </div>
       </div>
     </div>
