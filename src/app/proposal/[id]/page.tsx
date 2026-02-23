@@ -47,25 +47,34 @@ export default function ProposalPage() {
         breakPoints.push(rect.top - containerTop);
       });
 
-      // Temporarily constrain width to match letter paper proportions
-      const originalWidth = proposalRef.current.style.width;
-      const originalMaxWidth = proposalRef.current.style.maxWidth;
-      proposalRef.current.style.width = '816px'; // 8.5" × 96dpi
-      proposalRef.current.style.maxWidth = '816px';
+      // Temporarily constrain to letter-size and remove centering margin
+      const el = proposalRef.current;
+      const saved = {
+        width: el.style.width,
+        maxWidth: el.style.maxWidth,
+        margin: el.style.margin,
+      };
+      el.style.width = '816px';
+      el.style.maxWidth = '816px';
+      el.style.margin = '0';
+
+      // Force reflow
+      el.offsetHeight;
 
       // Render the full proposal as one canvas
-      const canvas = await toCanvas(proposalRef.current, {
+      const canvas = await toCanvas(el, {
         pixelRatio: 2,
         backgroundColor: '#ffffff',
+        width: 816,
         filter: (node: HTMLElement) => {
-          // Skip the action bar
           return !node.classList?.contains('print:hidden');
         },
       });
 
-      // Restore original width
-      proposalRef.current.style.width = originalWidth;
-      proposalRef.current.style.maxWidth = originalMaxWidth;
+      // Restore styles
+      el.style.width = saved.width;
+      el.style.maxWidth = saved.maxWidth;
+      el.style.margin = saved.margin;
 
       const pdf = new jsPDF('p', 'in', 'letter');
       const pageWidthIn = 8.5;
