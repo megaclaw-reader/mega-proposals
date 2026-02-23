@@ -330,7 +330,7 @@ export default function ProposalPage() {
                         <div className="text-3xl font-bold text-gray-900">
                           ${Math.round(pricingAgent.finalPrice * proposal.pricing.termMonths).toLocaleString()}
                         </div>
-                        <span className="text-sm text-gray-500">${pricingAgent.finalPrice.toLocaleString()}/mo × {proposal.pricing.termMonths} months</span>
+                        <span className="text-sm text-gray-500">${Math.round(pricingAgent.finalPrice).toLocaleString()}/mo × {proposal.pricing.termMonths} months</span>
                       </>
                     ) : (
                       // Monthly — show per month
@@ -341,7 +341,7 @@ export default function ProposalPage() {
                           </span>
                         )}
                         <div className="text-3xl font-bold text-gray-900">
-                          ${pricingAgent.finalPrice.toLocaleString()}
+                          ${Math.round(pricingAgent.finalPrice).toLocaleString()}
                           <span className="text-base font-normal text-gray-600">/mo</span>
                         </div>
                       </>
@@ -365,13 +365,13 @@ export default function ProposalPage() {
                 </h3>
                 <div className="text-4xl font-bold mb-2">
                   ${proposal.pricing.termMonths > 1 
-                    ? proposal.pricing.upfrontTotal.toLocaleString()
-                    : proposal.pricing.total.toLocaleString()}
+                    ? Math.round(proposal.pricing.upfrontTotal).toLocaleString()
+                    : Math.round(proposal.pricing.total).toLocaleString()}
                   {proposal.pricing.termMonths === 1 && <span className="text-xl font-normal">/mo</span>}
                 </div>
                 {proposal.pricing.termMonths > 1 && (
                   <p className="text-blue-100 text-sm">
-                    ${proposal.pricing.total.toLocaleString()}/mo × {proposal.pricing.termMonths} months ({getTermDisplayName(proposal.contractTerm).toLowerCase()} commitment)
+                    ${Math.round(proposal.pricing.total).toLocaleString()}/mo × {proposal.pricing.termMonths} months ({getTermDisplayName(proposal.contractTerm).toLowerCase()} commitment)
                   </p>
                 )}
                 {proposal.pricing.discountAmount > 0 && (
