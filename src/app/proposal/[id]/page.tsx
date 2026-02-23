@@ -36,6 +36,18 @@ export default function ProposalPage() {
       const html2canvas = (await import('html2canvas')).default;
       const { jsPDF } = await import('jspdf');
 
+      // Find sections with page break hints
+      const breakElements = proposalRef.current.querySelectorAll('.break-before-page');
+      const containerTop = proposalRef.current.getBoundingClientRect().top;
+      
+      // Collect break points (pixel positions relative to container)
+      const breakPoints: number[] = [];
+      breakElements.forEach(el => {
+        const rect = el.getBoundingClientRect();
+        breakPoints.push(rect.top - containerTop);
+      });
+
+      // Render the full proposal as one canvas
       const canvas = await html2canvas(proposalRef.current, {
         scale: 2,
         useCORS: true,
@@ -43,31 +55,73 @@ export default function ProposalPage() {
         backgroundColor: '#ffffff',
       });
 
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const pdf = new jsPDF('p', 'in', 'letter');
-      const pageWidth = 8.5;
-      const pageHeight = 11;
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const pageWidthIn = 8.5;
+      const pageHeightIn = 11;
+      const marginIn = 0.25;
+      const contentWidthIn = pageWidthIn - (marginIn * 2);
+      const contentHeightIn = pageHeightIn - (marginIn * 2);
 
-      let heightLeft = imgHeight;
-      let position = 0;
+      // Convert inches to canvas pixels
+      const scale = canvas.width / proposalRef.current.offsetWidth;
+      const pxPerInch = canvas.width / contentWidthIn;
+      const pageHeightPx = contentHeightIn * pxPerInch;
 
-      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      // Build list of page slices using break points
+      const slicePoints = [0]; // start of document
+      for (const bp of breakPoints) {
+        const bpPx = bp * scale;
+        if (bpPx > 0) slicePoints.push(bpPx);
+      }
 
-      while (heightLeft > 0) {
-        position -= pageHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+      // Now split each section into pages if it's taller than one page
+      const pages: { y: number; height: number }[] = [];
+      for (let i = 0; i < slicePoints.length; i++) {
+        const sectionStart = slicePoints[i];
+        const sectionEnd = i + 1 < slicePoints.length ? slicePoints[i + 1] : canvas.height;
+        let sectionHeight = sectionEnd - sectionStart;
+        
+        if (sectionHeight <= pageHeightPx) {
+          pages.push({ y: sectionStart, height: sectionHeight });
+        } else {
+          // Split oversized section into multiple pages
+          let y = sectionStart;
+          while (y < sectionEnd) {
+            const remaining = sectionEnd - y;
+            const h = Math.min(remaining, pageHeightPx);
+            pages.push({ y, height: h });
+            y += h;
+          }
+        }
+      }
+
+      // Render each page slice
+      for (let i = 0; i < pages.length; i++) {
+        if (i > 0) pdf.addPage();
+        
+        const { y, height } = pages[i];
+        
+        // Create a temporary canvas for this page slice
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = Math.ceil(height);
+        const ctx = pageCanvas.getContext('2d');
+        if (!ctx) continue;
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        ctx.drawImage(canvas, 0, -y);
+        
+        const imgData = pageCanvas.toDataURL('image/jpeg', 0.95);
+        const imgHeightIn = (pageCanvas.height / pxPerInch);
+        pdf.addImage(imgData, 'JPEG', marginIn, marginIn, contentWidthIn, imgHeightIn);
       }
 
       const filename = `${proposal.companyName.replace(/\s+/g, '_')}_MEGA_SOW.pdf`;
       pdf.save(filename);
     } catch (error) {
       console.error('PDF generation error:', error);
-      window.print();
+      alert('PDF generation failed: ' + (error as Error).message);
     } finally {
       setGenerating(false);
     }
@@ -172,7 +226,7 @@ export default function ProposalPage() {
           {proposal.selectedAgents.map((agent) => {
             const serviceContent = getServiceScope(agent, proposal.template);
             return (
-              <section key={`scope-${agent}`} className="space-y-8">
+              <section key={`scope-${agent}`} className="space-y-8 break-before-page">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-4">
                     {serviceContent.title}
@@ -243,7 +297,7 @@ export default function ProposalPage() {
           })}
 
           {/* Investment Summary */}
-          <section className="space-y-8">
+          <section className="space-y-8 break-before-page">
             <h2 className="text-2xl font-bold text-gray-900">Investment Summary</h2>
             <p className="text-sm text-gray-500 font-medium">{getTermDisplayName(proposal.contractTerm)} Commitment</p>
 
