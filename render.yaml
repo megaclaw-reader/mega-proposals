@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: mega-proposals
+    env: node
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+    autoDeploy: true
