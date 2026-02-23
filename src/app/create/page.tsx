@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Agent, Template, ContractTerm } from '@/lib/types';
 import { calculatePricing, formatPrice, getTermDisplayName } from '@/lib/pricing';
+import { encodeProposal } from '@/lib/encode';
 
 export default function CreateProposal() {
   const router = useRouter();
@@ -28,32 +29,19 @@ export default function CreateProposal() {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/proposals', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...formData,
-          discountPercentage: formData.discountPercentage ? parseFloat(formData.discountPercentage) : undefined,
-        }),
+      const encoded = encodeProposal({
+        ...formData,
+        discountPercentage: formData.discountPercentage ? parseFloat(formData.discountPercentage) : undefined,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to create proposal');
-      }
-
-      const { id } = await response.json();
-      router.push(`/proposal/${id}`);
+      router.push(`/proposal/${encoded}`);
     } catch (error) {
       console.error('Error creating proposal:', error);
       alert('Failed to create proposal. Please try again.');
-    } finally {
       setIsSubmitting(false);
     }
   };

@@ -3,14 +3,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { Proposal, SignatureData } from '@/lib/types';
-import { formatPrice, getTermDisplayName } from '@/lib/pricing';
+import { calculatePricing, formatPrice, getTermDisplayName } from '@/lib/pricing';
 import { getServiceScope, EXECUTIVE_SUMMARY_CONTENT, IMPLEMENTATION_TIMELINE, SERVICE_DESCRIPTIONS } from '@/lib/content';
+import { decodeProposal } from '@/lib/encode';
 import { format } from 'date-fns';
 
 export default function ProposalPage() {
   const params = useParams();
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [loading, setLoading] = useState(true);
+  const [signed, setSigned] = useState(false);
   const [signing, setSigning] = useState(false);
   const [signatureForm, setSignatureForm] = useState({
     fullName: '',
@@ -20,51 +22,25 @@ export default function ProposalPage() {
   const proposalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchProposal();
-  }, [params.id]);
-
-  const fetchProposal = async () => {
-    try {
-      const response = await fetch(`/api/proposals/${params.id}`);
-      if (!response.ok) {
-        throw new Error('Proposal not found');
-      }
-      const proposalData = await response.json();
-      setProposal(proposalData);
-    } catch (error) {
-      console.error('Error fetching proposal:', error);
-    } finally {
-      setLoading(false);
+    const id = params.id as string;
+    const config = decodeProposal(id);
+    if (config) {
+      const pricing = calculatePricing(
+        config.selectedAgents,
+        config.contractTerm,
+        config.discountPercentage || 0
+      );
+      setProposal({ ...config, pricing });
     }
-  };
+    setLoading(false);
+  }, [params.id]);
 
   const handleSign = async (e: React.FormEvent) => {
     e.preventDefault();
     setSigning(true);
-
-    try {
-      const response = await fetch(`/api/proposals/${params.id}/sign`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(signatureForm),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to sign proposal');
-      }
-
-      // Refresh proposal to show signed state
-      await fetchProposal();
-      alert('Proposal signed successfully!');
-    } catch (error: any) {
-      console.error('Error signing proposal:', error);
-      alert(`Error signing proposal: ${error.message}`);
-    } finally {
-      setSigning(false);
-    }
+    // Client-side signature capture — store locally
+    setSigned(true);
+    setSigning(false);
   };
 
   const downloadPDF = async () => {
@@ -326,27 +302,25 @@ export default function ProposalPage() {
           </section>
 
           {/* E-Signature Block */}
-          {proposal.signature ? (
+          {signed ? (
             /* Signed Confirmation */
             <section className="bg-green-50 border border-green-200 rounded-lg p-8">
               <div className="text-center mb-6">
                 <div className="text-green-600 text-6xl mb-4">✓</div>
                 <h2 className="text-2xl font-bold text-green-800 mb-2">Proposal Signed</h2>
-                <p className="text-green-700">This proposal has been legally executed and is now binding.</p>
+                <p className="text-green-700">This proposal has been accepted.</p>
               </div>
               
               <div className="bg-white rounded-lg p-6 border border-green-200">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Signature Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p><strong>Signed by:</strong> {proposal.signature.fullName}</p>
-                    <p><strong>Email:</strong> {proposal.signature.email}</p>
-                    <p><strong>Date & Time:</strong> {format(new Date(proposal.signature.signedAt), 'MMMM dd, yyyy \'at\' h:mm a')}</p>
+                    <p><strong>Signed by:</strong> {signatureForm.fullName}</p>
+                    <p><strong>Email:</strong> {signatureForm.email}</p>
+                    <p><strong>Date & Time:</strong> {format(new Date(), 'MMMM dd, yyyy \'at\' h:mm a')}</p>
                   </div>
                   <div>
-                    <p><strong>IP Address:</strong> {proposal.signature.ipAddress}</p>
                     <p><strong>Terms Agreed:</strong> Yes</p>
-                    <p><strong>Document Locked:</strong> Yes</p>
                   </div>
                 </div>
               </div>
