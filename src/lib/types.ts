@@ -1,0 +1,46 @@
+export type Agent = 'seo' | 'paid_ads' | 'website';
+
+export type Template = 'leads' | 'ecom';
+
+export type ContractTerm = 'annual' | 'bi_annual' | 'quarterly' | 'monthly';
+
+export interface ProposalConfig {
+  id: string;
+  customerName: string;
+  companyName: string;
+  template: Template;
+  selectedAgents: Agent[];
+  contractTerm: ContractTerm;
+  discountPercentage?: number;
+  salesRepName: string;
+  salesRepEmail: string;
+  createdAt: Date;
+  isLocked?: boolean;
+}
+
+export interface SignatureData {
+  fullName: string;
+  email: string;
+  signedAt: Date;
+  ipAddress: string;
+  userAgent: string;
+  agreedToTerms: boolean;
+}
+
+export interface Proposal extends ProposalConfig {
+  signature?: SignatureData;
+  pricing: PricingBreakdown;
+}
+
+export interface PricingBreakdown {
+  agents: Array<{
+    agent: Agent | 'seo_paid_combo';
+    name: string;
+    basePrice: number;
+    finalPrice: number;
+  }>;
+  subtotal: number;
+  discountAmount: number;
+  total: number;
+  term: ContractTerm;
+}
