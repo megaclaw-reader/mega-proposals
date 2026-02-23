@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const maxDuration = 30;
+
 export async function GET(request: NextRequest) {
   const url = request.nextUrl.searchParams.get('url');
   if (!url) {
@@ -7,37 +9,39 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Dynamic imports for serverless
-    const chromium = await import('@sparticuz/chromium');
+    const chromium = await import('@sparticuz/chromium-min');
     const puppeteer = await import('puppeteer-core');
 
     const browser = await puppeteer.default.launch({
       args: chromium.default.args,
-      defaultViewport: { width: 816, height: 1056 }, // Letter size at 96dpi
-      executablePath: await chromium.default.executablePath(),
+      defaultViewport: { width: 816, height: 1056 },
+      executablePath: await chromium.default.executablePath(
+        'https://github.com/nichochar/chromium-brotli-lambda-arm64/releases/download/v131.0.0/chromium-v131.0.0-pack.tar'
+      ),
       headless: true,
     });
 
     const page = await browser.newPage();
     
-    // Navigate to the proposal page
-    await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 });
+    await page.goto(url, { waitUntil: 'networkidle0', timeout: 20000 });
 
     // Hide the action bar
     await page.evaluate(() => {
-      const actionBar = document.querySelector('.print\\:hidden');
-      if (actionBar) (actionBar as HTMLElement).style.display = 'none';
+      const els = document.querySelectorAll('.print\\:hidden');
+      els.forEach(el => (el as HTMLElement).style.display = 'none');
+      // Remove max-width constraint for proper PDF rendering
+      const main = document.querySelector('.max-w-6xl');
+      if (main) {
+        (main as HTMLElement).style.maxWidth = 'none';
+      }
     });
 
-    // Wait for fonts and images to load
     await page.evaluate(() => document.fonts.ready);
 
-    // Generate PDF with proper page breaks
     const pdfBuffer = await page.pdf({
       format: 'Letter',
       printBackground: true,
-      margin: { top: '0.25in', bottom: '0.25in', left: '0.25in', right: '0.25in' },
-      preferCSSPageSize: false,
+      margin: { top: '0.4in', bottom: '0.4in', left: '0.4in', right: '0.4in' },
     });
 
     await browser.close();
