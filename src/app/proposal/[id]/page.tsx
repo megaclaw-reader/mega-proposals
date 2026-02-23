@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { Proposal } from '@/lib/types';
 import { calculatePricing, formatPrice, getTermDisplayName } from '@/lib/pricing';
@@ -12,8 +12,6 @@ export default function ProposalPage() {
   const params = useParams();
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [loading, setLoading] = useState(true);
-  const proposalRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     const id = params.id as string;
     const config = decodeProposal(id);
@@ -28,26 +26,8 @@ export default function ProposalPage() {
     setLoading(false);
   }, [params.id]);
 
-  const downloadPDF = async () => {
-    try {
-      // Dynamically import html2pdf
-      const html2pdf = (await import('html2pdf.js')).default;
-      
-      if (proposalRef.current) {
-        const opt = {
-          margin: [0.5, 0.5, 0.5, 0.5] as [number, number, number, number],
-          filename: `${proposal?.companyName.replace(/\s+/g, '_')}_Proposal_${proposal?.id}.pdf`,
-          image: { type: 'jpeg' as const, quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
-          jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' as const }
-        };
-
-        html2pdf().set(opt).from(proposalRef.current).save();
-      }
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF. Please try again.');
-    }
+  const downloadPDF = () => {
+    window.print();
   };
 
   if (loading) {
@@ -92,7 +72,7 @@ export default function ProposalPage() {
       </div>
 
       {/* Main Proposal Content */}
-      <div ref={proposalRef} className="max-w-4xl mx-auto bg-white shadow-lg">
+      <div className="max-w-4xl mx-auto bg-white shadow-lg">
         {/* Header */}
         <div className="bg-white border-b-4 border-blue-600 px-8 py-8">
           <div className="flex justify-between items-start">
