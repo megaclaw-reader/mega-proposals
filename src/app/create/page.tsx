@@ -58,12 +58,9 @@ export default function CreateProposal() {
       <div className="max-w-4xl mx-auto py-8 px-4">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="bg-blue-600 px-6 py-4">
-            <div className="flex items-center gap-3">
-              <img src="/mega-logo.png" alt="MEGA" className="h-10 w-10 rounded-lg" />
-              <div>
-                <h1 className="text-2xl font-bold text-white">MEGA Proposal Generator</h1>
-                <p className="text-blue-100 mt-1">Create a branded proposal for your customer</p>
-              </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">MEGA Proposal Generator</h1>
+              <p className="text-blue-100 mt-1">Create a branded proposal for your customer</p>
             </div>
           </div>
 

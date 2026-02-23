@@ -122,9 +122,8 @@ export default function ProposalPage() {
         <div className="bg-white border-b-4 border-blue-600 px-8 py-8">
           <div className="flex justify-between items-start">
             <div>
-              <div className="flex items-center gap-3 mb-2">
-                <img src="/mega-logo.png" alt="MEGA" className="h-12 w-12 rounded-lg" />
-                <h1 className="text-4xl font-bold text-blue-600">MEGA</h1>
+              <div className="mb-2">
+                <img src="/mega-wordmark.svg" alt="MEGA" className="h-8" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900">Proposal</h2>
               <p className="text-lg text-gray-600 mt-2">
