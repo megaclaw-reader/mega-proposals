@@ -136,7 +136,10 @@ export default function ProposalPage() {
         <div className="bg-white border-b-4 border-blue-600 px-8 py-8">
           <div className="flex justify-between items-start">
             <div>
-              <h1 className="text-4xl font-bold text-blue-600 mb-2">Mega</h1>
+              <div className="flex items-center gap-3 mb-2">
+                <img src="/mega-logo.png" alt="MEGA" className="h-12 w-12 rounded-lg" />
+                <h1 className="text-4xl font-bold text-blue-600">MEGA</h1>
+              </div>
               <h2 className="text-2xl font-bold text-gray-900">Proposal</h2>
               <p className="text-lg text-gray-600 mt-2">
                 {proposal.selectedAgents.map(agent => 
@@ -164,34 +167,44 @@ export default function ProposalPage() {
             </div>
           </section>
 
-          {/* Select Your Services */}
+          {/* Selected Services */}
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Select Your Services</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Selected Services</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {proposal.selectedAgents.map((agent) => {
-                const serviceContent = getServiceScope(agent, proposal.template);
-                return (
-                  <div key={agent} className="bg-gray-50 rounded-lg p-6 border border-gray-200">
-                    <h3 className="text-xl font-semibold text-blue-600 mb-3">
-                      {serviceContent.title}
-                    </h3>
-                    <p className="text-gray-700 mb-4">
-                      {SERVICE_DESCRIPTIONS[agent].shortDescription}
-                    </p>
-                    <div className="text-right">
+              {proposal.pricing.agents.map((pricingAgent, index) => (
+                <div key={index} className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                  <h3 className="text-xl font-semibold text-blue-600 mb-3">
+                    {pricingAgent.name}
+                  </h3>
+                  <p className="text-gray-700 mb-4">
+                    {pricingAgent.agent === 'seo_paid_combo' 
+                      ? 'AI-powered SEO, GEO optimization, and intelligent paid advertising — bundled for maximum impact.'
+                      : pricingAgent.agent === 'seo' 
+                        ? SERVICE_DESCRIPTIONS.seo.shortDescription
+                        : pricingAgent.agent === 'paid_ads'
+                          ? SERVICE_DESCRIPTIONS.paid_ads.shortDescription
+                          : SERVICE_DESCRIPTIONS.website.shortDescription
+                    }
+                  </p>
+                  <div className="text-right">
+                    {proposal.pricing.discountAmount > 0 ? (
+                      <>
+                        <span className="text-gray-500 line-through text-lg mr-2">
+                          {formatPrice(pricingAgent.basePrice)}
+                        </span>
+                        <span className="text-2xl font-bold text-green-600">
+                          {formatPrice(pricingAgent.finalPrice)}
+                        </span>
+                      </>
+                    ) : (
                       <span className="text-2xl font-bold text-gray-900">
-                        {formatPrice(proposal.pricing.agents.find(a => 
-                          a.agent === agent || (agent === 'seo' && a.agent === 'seo_paid_combo') || 
-                          (agent === 'paid_ads' && a.agent === 'seo_paid_combo')
-                        )?.finalPrice || 0)}
+                        {formatPrice(pricingAgent.finalPrice)}
                       </span>
-                      <span className="text-gray-600 text-sm block">
-                        per {getTermDisplayName(proposal.contractTerm).toLowerCase()}
-                      </span>
-                    </div>
+                    )}
+                    <span className="text-gray-600 text-sm block">per month</span>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           </section>
 
