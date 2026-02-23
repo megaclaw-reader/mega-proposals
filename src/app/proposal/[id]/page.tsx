@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { Proposal } from '@/lib/types';
 import { calculatePricing, formatPrice, getTermDisplayName } from '@/lib/pricing';
@@ -12,6 +12,9 @@ export default function ProposalPage() {
   const params = useParams();
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const proposalRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const id = params.id as string;
     const config = decodeProposal(id);
@@ -26,8 +29,49 @@ export default function ProposalPage() {
     setLoading(false);
   }, [params.id]);
 
-  const downloadPDF = () => {
-    window.print();
+  const downloadPDF = async () => {
+    if (!proposalRef.current || !proposal) return;
+    setGenerating(true);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+
+      const canvas = await html2canvas(proposalRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const pdf = new jsPDF('p', 'in', 'letter');
+      const pageWidth = 8.5;
+      const pageHeight = 11;
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position -= pageHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      const filename = `${proposal.companyName.replace(/\s+/g, '_')}_MEGA_Proposal.pdf`;
+      pdf.save(filename);
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      // Fallback to print
+      window.print();
+    } finally {
+      setGenerating(false);
+    }
   };
 
   if (loading) {
@@ -63,16 +107,17 @@ export default function ProposalPage() {
           <div className="flex gap-3">
             <button
               onClick={downloadPDF}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors"
+              disabled={generating}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-md font-medium transition-colors"
             >
-              Download PDF
+              {generating ? 'Generating PDF...' : 'Download PDF'}
             </button>
           </div>
         </div>
       </div>
 
       {/* Main Proposal Content */}
-      <div className="max-w-4xl mx-auto bg-white shadow-lg">
+      <div ref={proposalRef} className="max-w-4xl mx-auto bg-white shadow-lg">
         {/* Header */}
         <div className="bg-white border-b-4 border-blue-600 px-8 py-8">
           <div className="flex justify-between items-start">
