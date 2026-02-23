@@ -30,114 +30,26 @@ export default function ProposalPage() {
   }, [params.id]);
 
   const downloadPDF = async () => {
-    if (!proposalRef.current || !proposal) return;
+    if (!proposal) return;
     setGenerating(true);
     try {
-      const { toCanvas } = await import('html-to-image');
-      const { jsPDF } = await import('jspdf');
-
-      // Find sections with page break hints
-      const breakElements = proposalRef.current.querySelectorAll('.break-before-page');
-      const containerTop = proposalRef.current.getBoundingClientRect().top;
+      const currentUrl = window.location.href;
+      const response = await fetch(`/api/pdf?url=${encodeURIComponent(currentUrl)}`);
       
-      // Collect break points (pixel positions relative to container)
-      const breakPoints: number[] = [];
-      breakElements.forEach(el => {
-        const rect = el.getBoundingClientRect();
-        breakPoints.push(rect.top - containerTop);
-      });
-
-      // Temporarily constrain to letter-size and remove centering margin
-      const el = proposalRef.current;
-      const saved = {
-        width: el.style.width,
-        maxWidth: el.style.maxWidth,
-        margin: el.style.margin,
-      };
-      el.style.width = '816px';
-      el.style.maxWidth = '816px';
-      el.style.margin = '0';
-
-      // Force reflow
-      el.offsetHeight;
-
-      // Render the full proposal as one canvas
-      const canvas = await toCanvas(el, {
-        pixelRatio: 2,
-        backgroundColor: '#ffffff',
-        width: 816,
-        filter: (node: HTMLElement) => {
-          return !node.classList?.contains('print:hidden');
-        },
-      });
-
-      // Restore styles
-      el.style.width = saved.width;
-      el.style.maxWidth = saved.maxWidth;
-      el.style.margin = saved.margin;
-
-      const pdf = new jsPDF('p', 'in', 'letter');
-      const pageWidthIn = 8.5;
-      const pageHeightIn = 11;
-
-      // No extra margin — the content div already has its own padding
-      const pxPerInch = canvas.width / pageWidthIn;
-      const pageHeightPx = pageHeightIn * pxPerInch;
-
-      const scale = canvas.width / proposalRef.current.offsetWidth;
-
-      // Build list of page slices using break points
-      const slicePoints = [0]; // start of document
-      for (const bp of breakPoints) {
-        const bpPx = bp * scale;
-        if (bpPx > 0) slicePoints.push(bpPx);
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.details || 'PDF generation failed');
       }
 
-      // Now split each section into pages if it's taller than one page
-      const pages: { y: number; height: number }[] = [];
-      for (let i = 0; i < slicePoints.length; i++) {
-        const sectionStart = slicePoints[i];
-        const sectionEnd = i + 1 < slicePoints.length ? slicePoints[i + 1] : canvas.height;
-        let sectionHeight = sectionEnd - sectionStart;
-        
-        if (sectionHeight <= pageHeightPx) {
-          pages.push({ y: sectionStart, height: sectionHeight });
-        } else {
-          // Split oversized section into multiple pages
-          let y = sectionStart;
-          while (y < sectionEnd) {
-            const remaining = sectionEnd - y;
-            const h = Math.min(remaining, pageHeightPx);
-            pages.push({ y, height: h });
-            y += h;
-          }
-        }
-      }
-
-      // Render each page slice
-      for (let i = 0; i < pages.length; i++) {
-        if (i > 0) pdf.addPage();
-        
-        const { y, height } = pages[i];
-        
-        // Create a temporary canvas for this page slice
-        const pageCanvas = document.createElement('canvas');
-        pageCanvas.width = canvas.width;
-        pageCanvas.height = Math.ceil(height);
-        const ctx = pageCanvas.getContext('2d');
-        if (!ctx) continue;
-        
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-        ctx.drawImage(canvas, 0, -y);
-        
-        const imgData = pageCanvas.toDataURL('image/jpeg', 0.95);
-        const imgHeightIn = (pageCanvas.height / pxPerInch);
-        pdf.addImage(imgData, 'JPEG', 0, 0, pageWidthIn, imgHeightIn);
-      }
-
-      const filename = `${proposal.companyName.replace(/\s+/g, '_')}_MEGA_SOW.pdf`;
-      pdf.save(filename);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${proposal.companyName.replace(/\s+/g, '_')}_MEGA_SOW.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } catch (error) {
       console.error('PDF generation error:', error);
       alert('PDF generation failed: ' + (error as Error).message);

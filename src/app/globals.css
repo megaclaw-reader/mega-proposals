@@ -44,7 +44,7 @@
   }
   
   @page {
-    margin: 0.4in;
+    margin: 0.25in;
     size: letter;
   }
 
@@ -52,9 +52,15 @@
     background: white !important;
   }
 
-  /* Remove shadows and borders that look bad in print */
-  .shadow-lg, .shadow-sm {
-    box-shadow: none !important;
+  .break-before-page {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  /* Avoid breaking inside cards and timeline items */
+  .rounded-lg, .border {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }
 
