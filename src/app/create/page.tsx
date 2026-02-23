@@ -265,12 +265,18 @@ export default function CreateProposal() {
                   ))}
                   <hr className="my-2" />
                   <div className="flex justify-between items-center text-lg font-bold">
-                    <span>Total ({getTermDisplayName(formData.contractTerm)})</span>
-                    <span className="text-blue-600">{formatPrice(previewPricing.total)}</span>
+                    <span>Monthly Rate</span>
+                    <span className="text-blue-600">{formatPrice(previewPricing.total)}/mo</span>
                   </div>
                   {previewPricing.discountAmount > 0 && (
                     <div className="text-sm text-green-600">
-                      Discount: -{formatPrice(previewPricing.discountAmount)}
+                      Monthly discount: -{formatPrice(previewPricing.discountAmount)}
+                    </div>
+                  )}
+                  {previewPricing.termMonths > 1 && (
+                    <div className="flex justify-between items-center text-lg font-bold mt-2 pt-2 border-t border-gray-200">
+                      <span>Due Upfront ({previewPricing.termMonths} months)</span>
+                      <span className="text-blue-600">{formatPrice(previewPricing.upfrontTotal)}</span>
                     </div>
                   )}
                 </div>

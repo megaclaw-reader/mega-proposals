@@ -42,5 +42,9 @@ export interface PricingBreakdown {
   subtotal: number;
   discountAmount: number;
   total: number;
+  /** Upfront total (monthly rate × term months, after discount) */
+  upfrontTotal: number;
+  /** Number of months in the term */
+  termMonths: number;
   term: ContractTerm;
 }

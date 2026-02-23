@@ -106,11 +106,16 @@ export function calculatePricing(
     });
   }
 
+  const termMonths = getTermMonths(contractTerm);
+  const upfrontTotal = total * termMonths;
+
   return {
     agents,
     subtotal,
     discountAmount,
     total,
+    upfrontTotal,
+    termMonths,
     term: contractTerm,
   };
 }
@@ -132,4 +137,14 @@ export function getTermDisplayName(term: ContractTerm): string {
     monthly: 'Monthly',
   };
   return names[term];
+}
+
+export function getTermMonths(term: ContractTerm): number {
+  const months = {
+    annual: 12,
+    bi_annual: 6,
+    quarterly: 3,
+    monthly: 1,
+  };
+  return months[term];
 }

@@ -272,15 +272,15 @@ export default function ProposalPage() {
                       {proposal.pricing.discountAmount > 0 ? (
                         <>
                           <span className="text-gray-500 line-through text-lg">
-                            {formatPrice(agent.basePrice)}
+                            {formatPrice(agent.basePrice)}/mo
                           </span>
                           <div className="text-2xl font-bold text-green-600">
-                            {formatPrice(agent.finalPrice)}
+                            {formatPrice(agent.finalPrice)}/mo
                           </div>
                         </>
                       ) : (
                         <span className="text-2xl font-bold text-gray-900">
-                          {formatPrice(agent.finalPrice)}
+                          {formatPrice(agent.finalPrice)}/mo
                         </span>
                       )}
                     </div>
@@ -290,20 +290,36 @@ export default function ProposalPage() {
                 <div className="bg-white rounded-lg p-6 border border-blue-300">
                   <div className="flex justify-between items-center">
                     <div>
-                      <h3 className="text-xl font-bold text-gray-900">Total Investment</h3>
+                      <h3 className="text-xl font-bold text-gray-900">Monthly Rate</h3>
                       <p className="text-gray-600">{getTermDisplayName(proposal.contractTerm)} commitment</p>
                       {proposal.pricing.discountAmount > 0 && (
                         <p className="text-green-600 font-semibold">
-                          Savings: {formatPrice(proposal.pricing.discountAmount)}
+                          Monthly savings: {formatPrice(proposal.pricing.discountAmount)}
                         </p>
                       )}
                     </div>
                     <div className="text-right">
                       <div className="text-3xl font-bold text-blue-600">
-                        {formatPrice(proposal.pricing.total)}
+                        {formatPrice(proposal.pricing.total)}/mo
                       </div>
                     </div>
                   </div>
+
+                  {proposal.pricing.termMonths > 1 && (
+                    <div className="mt-4 pt-4 border-t border-blue-200 flex justify-between items-center">
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900">Due Upfront</h3>
+                        <p className="text-gray-600">
+                          {formatPrice(proposal.pricing.total)}/mo × {proposal.pricing.termMonths} months
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-3xl font-bold text-blue-600">
+                          {formatPrice(proposal.pricing.upfrontTotal)}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
