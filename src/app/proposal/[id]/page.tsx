@@ -30,26 +30,88 @@ export default function ProposalPage() {
   }, [params.id]);
 
   const downloadPDF = async () => {
-    if (!proposal) return;
+    if (!proposalRef.current || !proposal) return;
     setGenerating(true);
     try {
-      const currentUrl = window.location.href;
-      const response = await fetch(`/api/pdf?url=${encodeURIComponent(currentUrl)}`);
+      const { toBlob } = await import('html-to-image');
+      const { jsPDF } = await import('jspdf');
+
+      const el = proposalRef.current;
+
+      // Clone into an offscreen container at fixed letter width
+      const wrapper = document.createElement('div');
+      wrapper.style.position = 'absolute';
+      wrapper.style.left = '-9999px';
+      wrapper.style.top = '0';
+      wrapper.style.width = '768px';
+      wrapper.style.background = '#ffffff';
       
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.details || 'PDF generation failed');
+      const clone = el.cloneNode(true) as HTMLElement;
+      clone.style.width = '768px';
+      clone.style.maxWidth = '768px';
+      clone.style.margin = '0';
+      clone.style.padding = '32px';
+      clone.style.background = '#ffffff';
+      
+      // Remove the action bar from clone
+      const actionBars = clone.querySelectorAll('.print\\:hidden');
+      actionBars.forEach(ab => ab.remove());
+
+      wrapper.appendChild(clone);
+      document.body.appendChild(wrapper);
+
+      // Wait for layout
+      await new Promise(r => setTimeout(r, 200));
+
+      const blob = await toBlob(clone, {
+        pixelRatio: 3,
+        backgroundColor: '#ffffff',
+        width: 768,
+        height: clone.scrollHeight,
+        style: {
+          margin: '0',
+          padding: '32px',
+        },
+      });
+
+      document.body.removeChild(wrapper);
+
+      if (!blob) throw new Error('Failed to render');
+
+      // Convert blob to image and split into pages
+      const img = new Image();
+      const imgUrl = URL.createObjectURL(blob);
+      
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+        img.src = imgUrl;
+      });
+
+      const pdf = new jsPDF('p', 'pt', 'letter');
+      const pageW = 612; // letter width in points
+      const pageH = 792; // letter height in points
+      const imgW = pageW;
+      const imgH = (img.height * imgW) / img.width;
+
+      // Find CSS page break positions from the clone
+      let heightLeft = imgH;
+      let position = 0;
+
+      pdf.addImage(img.src, 'PNG', 0, position, imgW, imgH);
+      heightLeft -= pageH;
+
+      while (heightLeft > 0) {
+        position -= pageH;
+        pdf.addPage();
+        pdf.addImage(img.src, 'PNG', 0, position, imgW, imgH);
+        heightLeft -= pageH;
       }
 
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${proposal.companyName.replace(/\s+/g, '_')}_MEGA_SOW.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(imgUrl);
+
+      const filename = `${proposal.companyName.replace(/\s+/g, '_')}_MEGA_SOW.pdf`;
+      pdf.save(filename);
     } catch (error) {
       console.error('PDF generation error:', error);
       alert('PDF generation failed: ' + (error as Error).message);
