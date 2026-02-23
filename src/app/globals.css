@@ -42,3 +42,65 @@
 .animate-fade-in {
   animation: fadeIn 0.5s ease-out;
 }
+
+/* Enhanced styles for SOW */
+.service-category {
+  transition: all 0.2s ease;
+}
+
+.service-category:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Ensure consistent spacing for service sections */
+.service-section {
+  page-break-inside: avoid;
+}
+
+/* Style for highlighted callouts */
+.highlight-callout {
+  border-left: 4px solid #2563eb;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+}
+
+/* Pricing card hover effects */
+.pricing-card {
+  transition: all 0.3s ease;
+}
+
+.pricing-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Tab styling */
+.term-tab {
+  transition: all 0.2s ease;
+}
+
+.term-tab.active {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+}
+
+/* Timeline phase cards */
+.timeline-phase {
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.timeline-phase:hover {
+  background-color: #f8fafc;
+}
+
+.timeline-phase::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+  border-radius: 2px;
+}

@@ -48,3 +48,18 @@ export interface PricingBreakdown {
   termMonths: number;
   term: ContractTerm;
 }
+
+export interface ServiceHighlight {
+  title: string;
+  description: string;
+}
+
+export interface ServiceCategory {
+  name: string;
+  items: string[];
+}
+
+export interface TimelinePhase {
+  phase: string;
+  items: string[];
+}
