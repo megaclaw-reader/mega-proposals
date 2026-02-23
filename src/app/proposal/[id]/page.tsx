@@ -33,7 +33,7 @@ export default function ProposalPage() {
     if (!proposalRef.current || !proposal) return;
     setGenerating(true);
     try {
-      const html2canvas = (await import('html2canvas')).default;
+      const { toCanvas } = await import('html-to-image');
       const { jsPDF } = await import('jspdf');
 
       // Find sections with page break hints
@@ -48,11 +48,13 @@ export default function ProposalPage() {
       });
 
       // Render the full proposal as one canvas
-      const canvas = await html2canvas(proposalRef.current, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
+      const canvas = await toCanvas(proposalRef.current, {
+        pixelRatio: 2,
         backgroundColor: '#ffffff',
+        filter: (node: HTMLElement) => {
+          // Skip the action bar
+          return !node.classList?.contains('print:hidden');
+        },
       });
 
       const pdf = new jsPDF('p', 'in', 'letter');
