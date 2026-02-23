@@ -47,6 +47,12 @@ export default function ProposalPage() {
         breakPoints.push(rect.top - containerTop);
       });
 
+      // Temporarily constrain width to match letter paper proportions
+      const originalWidth = proposalRef.current.style.width;
+      const originalMaxWidth = proposalRef.current.style.maxWidth;
+      proposalRef.current.style.width = '816px'; // 8.5" × 96dpi
+      proposalRef.current.style.maxWidth = '816px';
+
       // Render the full proposal as one canvas
       const canvas = await toCanvas(proposalRef.current, {
         pixelRatio: 2,
@@ -56,6 +62,10 @@ export default function ProposalPage() {
           return !node.classList?.contains('print:hidden');
         },
       });
+
+      // Restore original width
+      proposalRef.current.style.width = originalWidth;
+      proposalRef.current.style.maxWidth = originalMaxWidth;
 
       const pdf = new jsPDF('p', 'in', 'letter');
       const pageWidthIn = 8.5;
