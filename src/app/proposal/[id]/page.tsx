@@ -60,14 +60,12 @@ export default function ProposalPage() {
       const pdf = new jsPDF('p', 'in', 'letter');
       const pageWidthIn = 8.5;
       const pageHeightIn = 11;
-      const marginIn = 0.25;
-      const contentWidthIn = pageWidthIn - (marginIn * 2);
-      const contentHeightIn = pageHeightIn - (marginIn * 2);
 
-      // Convert inches to canvas pixels
+      // No extra margin — the content div already has its own padding
+      const pxPerInch = canvas.width / pageWidthIn;
+      const pageHeightPx = pageHeightIn * pxPerInch;
+
       const scale = canvas.width / proposalRef.current.offsetWidth;
-      const pxPerInch = canvas.width / contentWidthIn;
-      const pageHeightPx = contentHeightIn * pxPerInch;
 
       // Build list of page slices using break points
       const slicePoints = [0]; // start of document
@@ -116,7 +114,7 @@ export default function ProposalPage() {
         
         const imgData = pageCanvas.toDataURL('image/jpeg', 0.95);
         const imgHeightIn = (pageCanvas.height / pxPerInch);
-        pdf.addImage(imgData, 'JPEG', marginIn, marginIn, contentWidthIn, imgHeightIn);
+        pdf.addImage(imgData, 'JPEG', 0, 0, pageWidthIn, imgHeightIn);
       }
 
       const filename = `${proposal.companyName.replace(/\s+/g, '_')}_MEGA_SOW.pdf`;
