@@ -230,7 +230,7 @@ export function ProposalPDF({ proposal }: { proposal: Proposal }) {
         <Footer />
         <View style={s.headerBar}>
           <Text style={s.headerMega}>MEGA</Text>
-          <Text style={s.headerTitle}>Statement of Work</Text>
+          <Text style={s.headerTitle}>Proposal for {proposal.companyName}</Text>
           <Text style={s.headerSub}>
             {proposal.selectedAgents.map(a => SERVICE_DESCRIPTIONS[a].title).join('  |  ')}
           </Text>
