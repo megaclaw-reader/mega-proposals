@@ -79,7 +79,7 @@ const s = StyleSheet.create({
   svcRow: { flexDirection: 'row' as const, gap: 10, marginBottom: 14 },
   svcCard: { flex: 1, borderWidth: 1, borderColor: G200, borderRadius: 8, padding: 14, backgroundColor: '#ffffff' },
   svcIconWrap: { width: 28, height: 28, borderRadius: 6, backgroundColor: BRAND_BLUE_LIGHT, marginBottom: 8, alignItems: 'center' as const, justifyContent: 'center' as const },
-  svcIcon: { fontSize: 14, color: BRAND_BLUE },
+  svcIcon: { fontSize: 8, fontWeight: 700, color: BRAND_BLUE },
   svcTitle: { fontSize: 10, fontWeight: 600, color: G900, marginBottom: 4 },
   svcDesc: { fontSize: 7.5, color: G600, lineHeight: 1.5 },
 
@@ -142,11 +142,11 @@ const s = StyleSheet.create({
   whyDesc: { fontSize: 7.5, color: G700, lineHeight: 1.5 },
 });
 
-// Agent icons
-const AGENT_ICONS: Record<string, string> = {
-  seo: '🔍',
-  paid_ads: '📈',
-  website: '🌐',
+// Agent icon labels (react-pdf doesn't support emoji)
+const AGENT_ICON_LABELS: Record<string, string> = {
+  seo: 'SEO',
+  paid_ads: 'ADS',
+  website: 'WEB',
 };
 
 function pairUp<T>(arr: T[]): T[][] {
@@ -300,7 +300,7 @@ export function ProposalPDF({ proposal }: { proposal: Proposal }) {
           {proposal.selectedAgents.map(agent => (
             <View key={agent} style={s.svcCard}>
               <View style={s.svcIconWrap}>
-                <Text style={s.svcIcon}>{AGENT_ICONS[agent] || '⚡'}</Text>
+                <Text style={s.svcIcon}>{AGENT_ICON_LABELS[agent] || 'AI'}</Text>
               </View>
               <Text style={s.svcTitle}>{SERVICE_DESCRIPTIONS[agent].title}</Text>
               <Text style={s.svcDesc}>{SERVICE_DESCRIPTIONS[agent].shortDescription}</Text>
@@ -313,12 +313,14 @@ export function ProposalPDF({ proposal }: { proposal: Proposal }) {
         <View style={s.secBar} />
         <View style={s.whyRow}>
           {[
-            { icon: '🤖', title: 'AI-Powered', desc: 'Our proprietary AI agents work 24/7, continuously optimizing your campaigns and content for maximum performance.' },
-            { icon: '👤', title: 'Dedicated Team', desc: 'Every client gets a dedicated account manager and direct access to specialists — no call centers, no runaround.' },
-            { icon: '📊', title: 'Results-Driven', desc: 'We optimize for business outcomes, not vanity metrics. Every dollar works toward qualified leads and revenue.' },
+            { label: 'AI', title: 'AI-Powered', desc: 'Our proprietary AI agents work 24/7, continuously optimizing your campaigns and content for maximum performance.' },
+            { label: 'DT', title: 'Dedicated Team', desc: 'Every client gets a dedicated account manager and direct access to specialists — no call centers, no runaround.' },
+            { label: 'ROI', title: 'Results-Driven', desc: 'We optimize for business outcomes, not vanity metrics. Every dollar works toward qualified leads and revenue.' },
           ].map((item, i) => (
             <View key={i} style={s.whyCard}>
-              <Text style={{ fontSize: 14, marginBottom: 6 }}>{item.icon}</Text>
+              <View style={[s.svcIconWrap, { marginBottom: 8 }]}>
+                <Text style={{ fontSize: 8, fontWeight: 700, color: BRAND_BLUE }}>{item.label}</Text>
+              </View>
               <Text style={s.whyTitle}>{item.title}</Text>
               <Text style={s.whyDesc}>{item.desc}</Text>
             </View>
