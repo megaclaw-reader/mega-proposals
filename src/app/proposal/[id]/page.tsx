@@ -52,125 +52,79 @@ export default function ProposalPage() {
       document.body.appendChild(wrapper);
       await new Promise(r => setTimeout(r, 300));
 
-      // Find ALL blocks that should never be split across pages
-      // This includes: .pdf-block (cards, timeline phases, highlights, etc.)
-      // and .break-before-page elements (force new page)
-      const cloneTop = clone.getBoundingClientRect().top;
-      const pxWidth = 768;
-
-      interface Block {
-        top: number;    // px from clone top
-        bottom: number; // px from clone top
-        forceBreak: boolean; // starts a new page
-      }
-
-      const blocks: Block[] = [];
-      
-      // Get all marked blocks
+      // Find all blocks that should be rendered individually
       const allBlocks = clone.querySelectorAll('[data-pdf-block]');
-      allBlocks.forEach(block => {
-        const rect = block.getBoundingClientRect();
-        blocks.push({
-          top: rect.top - cloneTop,
-          bottom: rect.bottom - cloneTop,
-          forceBreak: block.classList.contains('break-before-page'),
-        });
-      });
-
-      // Sort by position
-      blocks.sort((a, b) => a.top - b.top);
-
-      // If no blocks found, fall back to using all direct children
-      if (blocks.length === 0) {
-        const children = clone.children;
-        for (let i = 0; i < children.length; i++) {
-          const rect = children[i].getBoundingClientRect();
-          blocks.push({
-            top: rect.top - cloneTop,
-            bottom: rect.bottom - cloneTop,
-            forceBreak: false,
-          });
-        }
+      if (allBlocks.length === 0) {
+        throw new Error('No PDF blocks found! Make sure elements have data-pdf-block attributes.');
       }
 
-      const totalHeight = clone.scrollHeight;
+      // Render each block as its own canvas
+      const blockCanvases: Array<{
+        canvas: HTMLCanvasElement;
+        forceBreak: boolean;
+        height: number; // height in pixels
+      }> = [];
 
-      // Render the full clone as one canvas
-      const fullCanvas = await toCanvas(clone, {
-        pixelRatio: 2,
-        backgroundColor: '#ffffff',
-        width: pxWidth,
-        height: totalHeight,
-      });
+      for (const block of allBlocks) {
+        const forceBreak = block.classList.contains('break-before-page');
+        
+        // Render this block individually
+        const blockCanvas = await toCanvas(block as HTMLElement, {
+          pixelRatio: 2,
+          backgroundColor: '#ffffff',
+          width: 768,
+        });
+        
+        blockCanvases.push({
+          canvas: blockCanvas,
+          forceBreak,
+          height: blockCanvas.height / 2, // Adjust for pixelRatio
+        });
+      }
 
       document.body.removeChild(wrapper);
 
+      // Create PDF and pack blocks onto pages
       const pdf = new jsPDF('p', 'pt', 'letter');
-      const pageW = 612;
-      const pageH = 792;
-      const scale = fullCanvas.width / pxWidth;
-      const pxToPoints = pageW / (pxWidth * scale);
-      const pageHeightPx = pageH / pxToPoints; // page height in source pixels
+      const pageW = 612;  // Letter width in points
+      const pageH = 792;  // Letter height in points
+      const margin = 20;  // Top/bottom margin
+      const gap = 8;      // Gap between blocks on same page
+      const availableHeight = pageH - (2 * margin);
 
-      // Pack blocks onto pages using bin-packing
-      // Rule: never split a block, force new page on forceBreak
-      interface PageSlice { startPx: number; endPx: number; }
-      const pages: PageSlice[] = [];
-      let currentPageStart = 0;
-      let currentPageEnd = 0;
+      // Convert pixel heights to points (assuming 768px = 612pt width)
+      const pxToPoints = pageW / 768;
 
-      for (const block of blocks) {
-        if (block.forceBreak && currentPageEnd > currentPageStart) {
-          // Flush current page and start new one
-          pages.push({ startPx: currentPageStart, endPx: currentPageEnd });
-          currentPageStart = block.top;
-          currentPageEnd = block.bottom;
-        } else if (block.bottom - currentPageStart > pageHeightPx) {
-          // This block would overflow the current page
-          if (currentPageEnd > currentPageStart) {
-            // Flush what we have
-            pages.push({ startPx: currentPageStart, endPx: currentPageEnd });
-          }
-          // Start new page with this block
-          currentPageStart = block.top;
-          currentPageEnd = block.bottom;
-          
-          // If single block is taller than a page, it gets its own page(s)
-          if (block.bottom - block.top > pageHeightPx) {
-            pages.push({ startPx: block.top, endPx: block.bottom });
-            currentPageStart = block.bottom;
-            currentPageEnd = block.bottom;
-          }
-        } else {
-          // Block fits on current page
-          currentPageEnd = block.bottom;
+      let currentPageHeight = 0;
+      let isFirstPage = true;
+
+      for (const { canvas, forceBreak, height } of blockCanvases) {
+        const blockHeightPts = height * pxToPoints;
+        
+        // Check if we need a new page
+        if (!isFirstPage && (forceBreak || currentPageHeight + gap + blockHeightPts > availableHeight)) {
+          pdf.addPage();
+          currentPageHeight = 0;
         }
-      }
-      // Flush last page
-      if (currentPageEnd > currentPageStart) {
-        pages.push({ startPx: currentPageStart, endPx: currentPageEnd });
-      }
-
-      // Render each page
-      for (let i = 0; i < pages.length; i++) {
-        if (i > 0) pdf.addPage();
         
-        const { startPx, endPx } = pages[i];
-        const heightPx = (endPx - startPx) * scale;
-        const heightPts = heightPx * pxToPoints;
-        
-        const sliceCanvas = document.createElement('canvas');
-        sliceCanvas.width = fullCanvas.width;
-        sliceCanvas.height = Math.ceil(heightPx);
-        const ctx = sliceCanvas.getContext('2d')!;
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-        ctx.drawImage(fullCanvas, 0, -(startPx * scale));
-        
+        // Add block to current page
+        const yPosition = margin + currentPageHeight;
         pdf.addImage(
-          sliceCanvas.toDataURL('image/png'),
-          'PNG', 0, 0, pageW, heightPts
+          canvas.toDataURL('image/png'),
+          'PNG',
+          0,
+          yPosition,
+          pageW,
+          blockHeightPts
         );
+        
+        // Update current page height
+        currentPageHeight += blockHeightPts;
+        if (currentPageHeight > 0) {
+          currentPageHeight += gap; // Add gap after each block except the first
+        }
+        
+        isFirstPage = false;
       }
 
       const filename = `${proposal.companyName.replace(/\s+/g, '_')}_MEGA_SOW.pdf`;
@@ -281,10 +235,12 @@ export default function ProposalPage() {
           {/* Service Scope Sections */}
           {proposal.selectedAgents.map((agent) => {
             const serviceContent = getServiceScope(agent, proposal.template);
+            const categories = serviceContent.categories || [];
+            
             return (
-              <section key={`scope-${agent}`} className="space-y-8 break-before-page">
+              <section key={`scope-${agent}`} className="space-y-8">
                 {/* Intro + Highlights block */}
-                <div data-pdf-block>
+                <div data-pdf-block className="break-before-page">
                   <h2 className="text-2xl font-bold text-gray-900 mb-4">
                     {serviceContent.title}
                   </h2>
@@ -309,26 +265,33 @@ export default function ProposalPage() {
                   </div>
                 </div>
 
-                {/* Service Categories — each card is a separate PDF block */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {serviceContent.categories.map((category, index) => (
-                    <div data-pdf-block key={index} className="bg-gray-50 rounded-lg p-5 border border-gray-200">
-                      <h4 className="font-semibold text-gray-900 mb-3">{category.name}</h4>
-                      <ul className="space-y-2">
-                        {category.items.map((item, itemIndex) => (
-                          <li key={itemIndex} className="flex items-start text-sm">
-                            <span className="text-blue-600 mr-2 mt-0.5">•</span>
-                            <span className="text-gray-700">{item}</span>
-                          </li>
-                        ))}
-                      </ul>
+                {/* Service Categories — group into blocks of 2 cards each */}
+                {Array.from({ length: Math.ceil(categories.length / 2) }, (_, rowIndex) => {
+                  const startIndex = rowIndex * 2;
+                  const rowCategories = categories.slice(startIndex, startIndex + 2);
+                  
+                  return (
+                    <div key={`row-${rowIndex}`} data-pdf-block className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {rowCategories.map((category, index) => (
+                        <div key={index} className="bg-gray-50 rounded-lg p-5 border border-gray-200">
+                          <h4 className="font-semibold text-gray-900 mb-3">{category.name}</h4>
+                          <ul className="space-y-2">
+                            {category.items.map((item, itemIndex) => (
+                              <li key={itemIndex} className="flex items-start text-sm">
+                                <span className="text-blue-600 mr-2 mt-0.5">•</span>
+                                <span className="text-gray-700">{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
 
                 {/* Implementation Timeline */}
                 {serviceContent.timeline && (
-                  <div className="break-before-page" data-pdf-block>
+                  <div data-pdf-block className="break-before-page">
                     <h3 className="text-xl font-semibold text-gray-900 mb-6">Implementation Timeline</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {serviceContent.timeline.map((phase, index) => (
