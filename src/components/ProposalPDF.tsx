@@ -4,6 +4,7 @@ import {
   Page,
   Text,
   View,
+  Image,
   StyleSheet,
   Font,
 } from '@react-pdf/renderer';
@@ -24,12 +25,15 @@ Font.register({
 });
 Font.registerHyphenationCallback(word => [word]);
 
-// ── Colors ──
-const BLUE = '#2563eb';
-const BLUE_LIGHT = '#eff6ff';
+// ── Brand Colors (from gomega.ai) ──
+const BRAND_BLUE = '#2563eb';
+const BRAND_BLUE_LIGHT = '#eff6ff';
+const BRAND_BLUE_MEDIUM = '#dbeafe';
+const BRAND_BLUE_DARK = '#1e40af';
 const G50 = '#f9fafb';
 const G100 = '#f3f4f6';
 const G200 = '#e5e7eb';
+const G300 = '#d1d5db';
 const G400 = '#9ca3af';
 const G500 = '#6b7280';
 const G600 = '#4b5563';
@@ -42,56 +46,68 @@ const GREEN_800 = '#166534';
 
 const s = StyleSheet.create({
   page: { fontFamily: 'Inter', fontSize: 9, color: G800, paddingTop: 44, paddingBottom: 52, paddingHorizontal: 44, backgroundColor: '#ffffff' },
+
+  // Footer
   footerLine: { position: 'absolute', bottom: 38, left: 44, right: 44, borderBottomWidth: 0.5, borderBottomColor: G200 },
   footerBrand: { position: 'absolute', bottom: 22, left: 44, fontSize: 7.5, color: G400 },
   pageNum: { position: 'absolute', bottom: 22, right: 44, fontSize: 7.5, color: G400 },
 
-  headerBar: { backgroundColor: BLUE, marginHorizontal: -44, marginTop: -44, paddingHorizontal: 44, paddingTop: 32, paddingBottom: 28, marginBottom: 28 },
-  headerMega: { fontSize: 18, fontWeight: 700, color: '#ffffff', marginBottom: 12, letterSpacing: 3, textTransform: 'uppercase' as const },
-  headerTitle: { fontSize: 26, fontWeight: 700, color: '#ffffff', marginBottom: 6 },
-  headerSub: { fontSize: 12, fontWeight: 500, color: '#dbeafe' },
+  // Cover header — light background matching gomega.ai
+  coverTopBar: { backgroundColor: BRAND_BLUE, height: 4, marginHorizontal: -44, marginTop: -44, marginBottom: 0 },
+  coverHeader: { backgroundColor: BRAND_BLUE_LIGHT, marginHorizontal: -44, paddingHorizontal: 44, paddingTop: 24, paddingBottom: 24, marginBottom: 24 },
+  logoImage: { width: 100, height: 36, marginBottom: 14 },
+  coverTitle: { fontSize: 24, fontWeight: 700, color: G900, marginBottom: 6 },
+  coverAgents: { fontSize: 11, fontWeight: 500, color: BRAND_BLUE },
 
-  metaRow: { flexDirection: 'row' as const, justifyContent: 'space-between' as const, marginBottom: 20 },
+  // Meta
+  metaRow: { flexDirection: 'row' as const, justifyContent: 'space-between' as const, marginBottom: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: G200 },
   metaCol: { flex: 1 },
-  metaLabel: { fontSize: 7.5, fontWeight: 600, color: G400, textTransform: 'uppercase' as const, letterSpacing: 0.8, marginBottom: 2, marginTop: 8 },
+  metaLabel: { fontSize: 7, fontWeight: 600, color: BRAND_BLUE, textTransform: 'uppercase' as const, letterSpacing: 0.8, marginBottom: 2, marginTop: 8 },
   metaValue: { fontSize: 10, fontWeight: 500, color: G900 },
   metaValueSub: { fontSize: 9, color: G600 },
 
-  secTitle: { fontSize: 15, fontWeight: 700, color: G900, marginBottom: 10 },
-  secBar: { borderBottomWidth: 2, borderBottomColor: BLUE, marginBottom: 14, width: 36 },
+  // Section headings
+  secTitle: { fontSize: 15, fontWeight: 700, color: G900, marginBottom: 8 },
+  secBar: { borderBottomWidth: 2.5, borderBottomColor: BRAND_BLUE, marginBottom: 12, width: 32 },
   subTitle: { fontSize: 11, fontWeight: 600, color: G900, marginBottom: 8 },
-  label: { fontSize: 7, fontWeight: 600, color: G400, textTransform: 'uppercase' as const, letterSpacing: 0.8, marginBottom: 8, marginTop: 4 },
+  label: { fontSize: 7, fontWeight: 600, color: BRAND_BLUE, textTransform: 'uppercase' as const, letterSpacing: 0.8, marginBottom: 8, marginTop: 4 },
 
+  // Body
   body: { fontSize: 9, lineHeight: 1.6, color: G700 },
 
+  // Service overview cards (matching gomega.ai card style)
   svcRow: { flexDirection: 'row' as const, gap: 10, marginBottom: 14 },
-  svcCard: { flex: 1, borderWidth: 1, borderColor: G200, borderRadius: 5, padding: 12 },
-  svcBadge: { backgroundColor: BLUE_LIGHT, color: BLUE, fontSize: 6.5, fontWeight: 700, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, alignSelf: 'flex-start' as const, marginBottom: 6, letterSpacing: 0.4 },
-  svcTitle: { fontSize: 10, fontWeight: 600, color: G900, marginBottom: 3 },
-  svcDesc: { fontSize: 7.5, color: G600, lineHeight: 1.4 },
+  svcCard: { flex: 1, borderWidth: 1, borderColor: G200, borderRadius: 8, padding: 14, backgroundColor: '#ffffff' },
+  svcIconWrap: { width: 28, height: 28, borderRadius: 6, backgroundColor: BRAND_BLUE_LIGHT, marginBottom: 8, alignItems: 'center' as const, justifyContent: 'center' as const },
+  svcIcon: { fontSize: 14, color: BRAND_BLUE },
+  svcTitle: { fontSize: 10, fontWeight: 600, color: G900, marginBottom: 4 },
+  svcDesc: { fontSize: 7.5, color: G600, lineHeight: 1.5 },
 
-  hlBox: { backgroundColor: BLUE_LIGHT, borderRadius: 5, padding: 12, marginBottom: 10 },
+  // Highlights
+  hlBox: { backgroundColor: BRAND_BLUE_LIGHT, borderRadius: 6, borderWidth: 1, borderColor: BRAND_BLUE_MEDIUM, padding: 12, marginBottom: 10 },
   hlRow: { flexDirection: 'row' as const, marginBottom: 5 },
-  hlIcon: { width: 12, height: 12, borderRadius: 6, backgroundColor: BLUE, marginRight: 7, marginTop: 1, alignItems: 'center' as const, justifyContent: 'center' as const },
+  hlIcon: { width: 12, height: 12, borderRadius: 6, backgroundColor: BRAND_BLUE, marginRight: 7, marginTop: 1, alignItems: 'center' as const, justifyContent: 'center' as const },
   hlCheck: { color: '#ffffff', fontSize: 6.5, fontWeight: 700 },
   hlText: { flex: 1, fontSize: 8, color: G800, lineHeight: 1.5 },
 
+  // Deliverable cards
   catRow: { flexDirection: 'row' as const, gap: 8, marginBottom: 8 },
-  catCard: { flex: 1, backgroundColor: G50, borderWidth: 1, borderColor: G200, borderRadius: 4, padding: 10 },
+  catCard: { flex: 1, backgroundColor: '#ffffff', borderWidth: 1, borderColor: G200, borderRadius: 6, padding: 10 },
   catTitle: { fontSize: 8.5, fontWeight: 600, color: G900, marginBottom: 5 },
   bullet: { flexDirection: 'row' as const, marginBottom: 2.5 },
-  dot: { color: BLUE, fontSize: 7, marginRight: 4, marginTop: 0.5 },
+  dot: { color: BRAND_BLUE, fontSize: 7, marginRight: 4, marginTop: 0.5 },
   bText: { flex: 1, fontSize: 7, color: G700, lineHeight: 1.4 },
 
+  // Timeline
   tlRow: { flexDirection: 'row' as const, gap: 8, marginBottom: 8 },
-  tlCard: { flex: 1, borderWidth: 1, borderColor: G200, borderRadius: 4, padding: 10 },
-  tlPhase: { fontSize: 8.5, fontWeight: 600, color: BLUE, marginBottom: 5 },
+  tlCard: { flex: 1, borderWidth: 1, borderColor: BRAND_BLUE_MEDIUM, borderRadius: 6, padding: 10, backgroundColor: BRAND_BLUE_LIGHT },
+  tlPhase: { fontSize: 8.5, fontWeight: 600, color: BRAND_BLUE, marginBottom: 5 },
 
   // Pricing
   priceRow: { flexDirection: 'row' as const, gap: 10, marginBottom: 14, alignItems: 'stretch' as const },
-  priceCard: { flex: 1, borderWidth: 1.5, borderColor: G200, borderRadius: 7, padding: 14, backgroundColor: '#ffffff' },
-  priceCardBest: { flex: 1, borderWidth: 2, borderColor: BLUE, borderRadius: 7, padding: 14, backgroundColor: BLUE_LIGHT },
-  bestBadge: { backgroundColor: BLUE, color: '#ffffff', fontSize: 6.5, fontWeight: 700, paddingHorizontal: 8, paddingVertical: 2.5, borderRadius: 8, alignSelf: 'center' as const, marginBottom: 6, letterSpacing: 0.4, textTransform: 'uppercase' as const },
+  priceCard: { flex: 1, borderWidth: 1.5, borderColor: G200, borderRadius: 8, padding: 14, backgroundColor: '#ffffff' },
+  priceCardBest: { flex: 1, borderWidth: 2, borderColor: BRAND_BLUE, borderRadius: 8, padding: 14, backgroundColor: BRAND_BLUE_LIGHT },
+  bestBadge: { backgroundColor: BRAND_BLUE, color: '#ffffff', fontSize: 6.5, fontWeight: 700, paddingHorizontal: 8, paddingVertical: 2.5, borderRadius: 8, alignSelf: 'center' as const, marginBottom: 6, letterSpacing: 0.4, textTransform: 'uppercase' as const },
   pTermName: { fontSize: 12, fontWeight: 700, color: G900, textAlign: 'center' as const, marginBottom: 2 },
   pTermMonths: { fontSize: 7.5, color: G500, textAlign: 'center' as const, marginBottom: 10 },
   pAgentRow: { flexDirection: 'row' as const, justifyContent: 'space-between' as const, alignItems: 'center' as const, marginBottom: 4 },
@@ -103,23 +119,35 @@ const s = StyleSheet.create({
   pMonthRow: { flexDirection: 'row' as const, justifyContent: 'space-between' as const, alignItems: 'center' as const, marginBottom: 3 },
   pMonthLabel: { fontSize: 8.5, fontWeight: 500, color: G700 },
   pMonthVal: { fontSize: 10, fontWeight: 700, color: G900 },
-  pUpBox: { backgroundColor: G100, borderRadius: 5, padding: 10, marginTop: 8, alignItems: 'center' as const },
+  pUpBox: { backgroundColor: BRAND_BLUE_LIGHT, borderRadius: 6, padding: 10, marginTop: 8, alignItems: 'center' as const },
   pUpLabel: { fontSize: 7.5, color: G500, marginBottom: 3 },
-  pUpVal: { fontSize: 18, fontWeight: 700, color: BLUE },
+  pUpVal: { fontSize: 18, fontWeight: 700, color: BRAND_BLUE },
   pDisc: { fontSize: 7.5, color: GREEN_600, fontWeight: 500, marginTop: 3 },
 
-  savingsBar: { backgroundColor: GREEN_50, borderWidth: 1, borderColor: '#bbf7d0', borderRadius: 5, padding: 8, alignItems: 'center' as const, marginBottom: 16 },
+  savingsBar: { backgroundColor: GREEN_50, borderWidth: 1, borderColor: '#bbf7d0', borderRadius: 6, padding: 8, alignItems: 'center' as const, marginBottom: 16 },
   savingsText: { fontSize: 8.5, fontWeight: 500, color: GREEN_800 },
   savingsBold: { fontWeight: 700 },
 
-  nextBox: { backgroundColor: G50, borderWidth: 1, borderColor: G200, borderRadius: 5, padding: 16 },
+  nextBox: { borderWidth: 1.5, borderColor: BRAND_BLUE, borderRadius: 8, padding: 16, backgroundColor: BRAND_BLUE_LIGHT },
   nextTitle: { fontSize: 11, fontWeight: 600, color: G900, marginBottom: 6 },
   nextText: { fontSize: 8.5, color: G700, lineHeight: 1.6, marginBottom: 4 },
-  nextCta: { fontSize: 9, fontWeight: 600, color: BLUE, marginTop: 4 },
+  nextCta: { fontSize: 9, fontWeight: 600, color: BRAND_BLUE, marginTop: 4 },
 
-  // Agent separator
   agentSep: { borderBottomWidth: 1, borderBottomColor: G200, marginTop: 14, marginBottom: 14 },
+
+  // Why Mega cards
+  whyRow: { flexDirection: 'row' as const, gap: 10, marginTop: 4 },
+  whyCard: { flex: 1, borderWidth: 1, borderColor: G200, borderRadius: 8, padding: 12, backgroundColor: '#ffffff' },
+  whyTitle: { fontSize: 9, fontWeight: 600, color: BRAND_BLUE, marginBottom: 4 },
+  whyDesc: { fontSize: 7.5, color: G700, lineHeight: 1.5 },
 });
+
+// Agent icons
+const AGENT_ICONS: Record<string, string> = {
+  seo: '🔍',
+  paid_ads: '📈',
+  website: '🌐',
+};
 
 function pairUp<T>(arr: T[]): T[][] {
   const out: T[][] = [];
@@ -131,7 +159,7 @@ function Footer() {
   return (
     <>
       <View style={s.footerLine} fixed />
-      <Text style={s.footerBrand} fixed>MEGA AI  •  gomega.ai</Text>
+      <Text style={s.footerBrand} fixed>Mega  •  gomega.ai</Text>
       <Text style={s.pageNum} fixed render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
     </>
   );
@@ -154,7 +182,7 @@ function ServiceScope({ agent, template, isLast }: { agent: Agent; template: Tem
 
   return (
     <>
-      {/* Section header + description + highlights — keep together to prevent orphaning */}
+      {/* Section header + description + highlights grouped */}
       <View wrap={false}>
         <Text style={s.secTitle}>{c.title}</Text>
         <View style={s.secBar} />
@@ -169,7 +197,7 @@ function ServiceScope({ agent, template, isLast }: { agent: Agent; template: Tem
         </View>
       </View>
 
-      {/* Deliverables — label grouped with first row to prevent orphaning */}
+      {/* Deliverables — label grouped with first row */}
       {catPairs.map((pair, i) => (
         <View key={`cat-${i}`} wrap={false}>
           {i === 0 && <Text style={s.label}>{shortName} — Service Deliverables</Text>}
@@ -185,7 +213,7 @@ function ServiceScope({ agent, template, isLast }: { agent: Agent; template: Tem
         </View>
       ))}
 
-      {/* Timeline — heading grouped with first row to prevent orphaning */}
+      {/* Timeline — heading grouped with first row */}
       {c.timeline && c.timeline.length > 0 && (
         <>
           {tlPairs.map((pair, i) => (
@@ -205,7 +233,6 @@ function ServiceScope({ agent, template, isLast }: { agent: Agent; template: Tem
         </>
       )}
 
-      {/* Separator between agents */}
       {!isLast && <View style={s.agentSep} />}
     </>
   );
@@ -223,19 +250,28 @@ export function ProposalPDF({ proposal }: { proposal: Proposal }) {
   }));
   const isSingleTerm = termPricings.length === 1;
 
+  // Logo URL — use the hosted version
+  const logoUrl = 'https://mega-proposals.vercel.app/mega-wordmark-blue.png';
+
   return (
     <Document>
       {/* ===== COVER PAGE ===== */}
       <Page size="LETTER" style={s.page}>
         <Footer />
-        <View style={s.headerBar}>
-          <Text style={s.headerMega}>MEGA</Text>
-          <Text style={s.headerTitle}>Proposal for {proposal.companyName}</Text>
-          <Text style={s.headerSub}>
+
+        {/* Blue accent bar at top */}
+        <View style={s.coverTopBar} />
+
+        {/* Light header with logo */}
+        <View style={s.coverHeader}>
+          <Image src={logoUrl} style={s.logoImage} />
+          <Text style={s.coverTitle}>Proposal for {proposal.companyName}</Text>
+          <Text style={s.coverAgents}>
             {proposal.selectedAgents.map(a => SERVICE_DESCRIPTIONS[a].title).join('  |  ')}
           </Text>
         </View>
 
+        {/* Meta */}
         <View style={s.metaRow}>
           <View style={s.metaCol}>
             <Text style={s.metaLabel}>Prepared For</Text>
@@ -250,42 +286,47 @@ export function ProposalPDF({ proposal }: { proposal: Proposal }) {
           </View>
         </View>
 
+        {/* Executive Summary */}
         <Text style={s.secTitle}>Executive Summary</Text>
         <View style={s.secBar} />
-        <Text style={[s.body, { marginBottom: 20 }]}>
+        <Text style={[s.body, { marginBottom: 18 }]}>
           {EXECUTIVE_SUMMARY_CONTENT[proposal.template]}
         </Text>
 
+        {/* Your Services */}
         <Text style={s.secTitle}>Your Services</Text>
         <View style={s.secBar} />
         <View style={s.svcRow}>
           {proposal.selectedAgents.map(agent => (
             <View key={agent} style={s.svcCard}>
-              <Text style={s.svcBadge}>{SERVICE_DESCRIPTIONS[agent].badge}</Text>
+              <View style={s.svcIconWrap}>
+                <Text style={s.svcIcon}>{AGENT_ICONS[agent] || '⚡'}</Text>
+              </View>
               <Text style={s.svcTitle}>{SERVICE_DESCRIPTIONS[agent].title}</Text>
               <Text style={s.svcDesc}>{SERVICE_DESCRIPTIONS[agent].shortDescription}</Text>
             </View>
           ))}
         </View>
 
-        {/* Why MEGA section to fill cover page */}
-        <Text style={[s.secTitle, { marginTop: 8 }]}>Why MEGA</Text>
+        {/* Why Mega */}
+        <Text style={[s.secTitle, { marginTop: 4 }]}>Why Mega</Text>
         <View style={s.secBar} />
-        <View style={{ flexDirection: 'row' as const, gap: 10 }}>
+        <View style={s.whyRow}>
           {[
-            { title: 'AI-Powered', desc: 'Our proprietary AI agents work 24/7, continuously optimizing your campaigns and content for maximum performance.' },
-            { title: 'Dedicated Team', desc: 'Every client gets a dedicated account manager and direct access to specialists — no call centers, no runaround.' },
-            { title: 'Results-Driven', desc: 'We optimize for business outcomes, not vanity metrics. Every dollar in your budget is working toward qualified leads and revenue.' },
+            { icon: '🤖', title: 'AI-Powered', desc: 'Our proprietary AI agents work 24/7, continuously optimizing your campaigns and content for maximum performance.' },
+            { icon: '👤', title: 'Dedicated Team', desc: 'Every client gets a dedicated account manager and direct access to specialists — no call centers, no runaround.' },
+            { icon: '📊', title: 'Results-Driven', desc: 'We optimize for business outcomes, not vanity metrics. Every dollar works toward qualified leads and revenue.' },
           ].map((item, i) => (
-            <View key={i} style={{ flex: 1 }}>
-              <Text style={{ fontSize: 9, fontWeight: 600, color: BLUE, marginBottom: 4 }}>{item.title}</Text>
-              <Text style={{ fontSize: 7.5, color: G700, lineHeight: 1.5 }}>{item.desc}</Text>
+            <View key={i} style={s.whyCard}>
+              <Text style={{ fontSize: 14, marginBottom: 6 }}>{item.icon}</Text>
+              <Text style={s.whyTitle}>{item.title}</Text>
+              <Text style={s.whyDesc}>{item.desc}</Text>
             </View>
           ))}
         </View>
       </Page>
 
-      {/* ===== ALL SERVICE SCOPES — single wrapping page, content flows naturally ===== */}
+      {/* ===== SERVICE SCOPES — single wrapping page ===== */}
       <Page size="LETTER" style={s.page} wrap>
         <Footer />
         {proposal.selectedAgents.map((agent, idx) => (
@@ -308,7 +349,6 @@ export function ProposalPDF({ proposal }: { proposal: Proposal }) {
         <View style={s.priceRow} wrap={false}>
           {termPricings.map(({ option, pricing }, idx) => {
             const best = !isSingleTerm && idx === 0;
-            // Any term has discount? Show strikethrough row on all for alignment
             const anyDiscount = termPricings.some(tp => tp.option.discountPercentage > 0);
             return (
               <View key={option.term} style={best ? s.priceCardBest : s.priceCard}>
@@ -324,11 +364,9 @@ export function ProposalPDF({ proposal }: { proposal: Proposal }) {
                       <Text style={s.pAgentName}>{ag.name}</Text>
                       <Text style={s.pPrice}>${Math.round(ag.finalPrice).toLocaleString()}/mo</Text>
                     </View>
-                    {/* Show strikethrough on its own line for clarity */}
                     {option.discountPercentage > 0 && (
                       <Text style={[s.pStrike, { textAlign: 'right' as const }]}>was ${ag.basePrice.toLocaleString()}/mo</Text>
                     )}
-                    {/* Placeholder line when other cards have discounts for vertical alignment */}
                     {!option.discountPercentage && anyDiscount && (
                       <Text style={{ fontSize: 6.5, color: '#ffffff' }}>-</Text>
                     )}
