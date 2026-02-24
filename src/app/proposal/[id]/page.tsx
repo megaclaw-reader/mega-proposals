@@ -30,107 +30,21 @@ export default function ProposalPage() {
   }, [params.id]);
 
   const downloadPDF = async () => {
-    if (!proposalRef.current || !proposal) return;
+    if (!proposal) return;
     setGenerating(true);
     try {
-      const { toCanvas } = await import('html-to-image');
-      const { jsPDF } = await import('jspdf');
+      const { pdf } = await import('@react-pdf/renderer');
+      const { ProposalPDF } = await import('@/components/ProposalPDF');
+      const React = await import('react');
 
-      const el = proposalRef.current;
-
-      // Clone into offscreen container at fixed letter width
-      const wrapper = document.createElement('div');
-      wrapper.style.cssText = 'position:absolute;left:-9999px;top:0;width:768px;background:#fff;';
-      
-      const clone = el.cloneNode(true) as HTMLElement;
-      clone.style.cssText = 'width:768px;max-width:768px;margin:0;background:#fff;';
-      
-      // Remove action bar from clone
-      clone.querySelectorAll('.print\\:hidden').forEach(ab => ab.remove());
-      
-      wrapper.appendChild(clone);
-      document.body.appendChild(wrapper);
-      await new Promise(r => setTimeout(r, 300));
-
-      // Find all blocks that should be rendered individually
-      const allBlocks = clone.querySelectorAll('[data-pdf-block]');
-      if (allBlocks.length === 0) {
-        throw new Error('No PDF blocks found! Make sure elements have data-pdf-block attributes.');
-      }
-
-      // Render each block as its own canvas
-      const blockCanvases: Array<{
-        canvas: HTMLCanvasElement;
-        forceBreak: boolean;
-        height: number; // height in pixels
-      }> = [];
-
-      for (const block of allBlocks) {
-        const forceBreak = block.classList.contains('break-before-page');
-        
-        // Render this block individually
-        const blockCanvas = await toCanvas(block as HTMLElement, {
-          pixelRatio: 2,
-          backgroundColor: '#ffffff',
-          width: 768,
-        });
-        
-        blockCanvases.push({
-          canvas: blockCanvas,
-          forceBreak,
-          height: blockCanvas.height / 2, // Adjust for pixelRatio
-        });
-      }
-
-      document.body.removeChild(wrapper);
-
-      // Create PDF and pack blocks onto pages
-      const pdf = new jsPDF('p', 'pt', 'letter');
-      const pageW = 612;  // Letter width in points
-      const pageH = 792;  // Letter height in points
-      const marginX = 36; // Left/right margin (0.5 inch)
-      const marginY = 28; // Top/bottom margin
-      const gap = 8;      // Gap between blocks on same page
-      const contentW = pageW - (2 * marginX);
-      const availableHeight = pageH - (2 * marginY);
-
-      // Convert pixel heights to points
-      const pxToPoints = contentW / 768;
-
-      let currentPageHeight = 0;
-      let isFirstPage = true;
-
-      for (const { canvas, forceBreak, height } of blockCanvases) {
-        const blockHeightPts = height * pxToPoints;
-        
-        // Check if we need a new page
-        if (!isFirstPage && (forceBreak || currentPageHeight + gap + blockHeightPts > availableHeight)) {
-          pdf.addPage();
-          currentPageHeight = 0;
-        }
-        
-        // Add block to current page — centered with margins
-        const yPosition = marginY + currentPageHeight;
-        pdf.addImage(
-          canvas.toDataURL('image/png'),
-          'PNG',
-          marginX,
-          yPosition,
-          contentW,
-          blockHeightPts
-        );
-        
-        // Update current page height
-        currentPageHeight += blockHeightPts;
-        if (currentPageHeight > 0) {
-          currentPageHeight += gap; // Add gap after each block except the first
-        }
-        
-        isFirstPage = false;
-      }
-
-      const filename = `${proposal.companyName.replace(/\s+/g, '_')}_MEGA_SOW.pdf`;
-      pdf.save(filename);
+      const doc = React.createElement(ProposalPDF, { proposal }) as any;
+      const blob = await pdf(doc).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${proposal.companyName.replace(/\s+/g, '_')}_MEGA_SOW.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
     } catch (error) {
       console.error('PDF generation error:', error);
       alert('PDF generation failed: ' + (error as Error).message);
@@ -241,7 +155,7 @@ export default function ProposalPage() {
             
             return (
               <section key={`scope-${agent}`} className="space-y-8">
-                {/* Intro + Highlights block */}
+                {/* Intro + Highlights — own block, force page break before agent */}
                 <div data-pdf-block className="break-before-page">
                   <h2 className="text-2xl font-bold text-gray-900 mb-4">
                     {serviceContent.title}
@@ -267,33 +181,42 @@ export default function ProposalPage() {
                   </div>
                 </div>
 
-                {/* Service Categories — group into blocks of 2 cards each */}
+                {/* Service Categories — each ROW of 2 cards is a separate block with a label */}
                 {Array.from({ length: Math.ceil(categories.length / 2) }, (_, rowIndex) => {
-                  const startIndex = rowIndex * 2;
-                  const rowCategories = categories.slice(startIndex, startIndex + 2);
-                  
+                  const rowCats = categories.slice(rowIndex * 2, rowIndex * 2 + 2);
                   return (
-                    <div key={`row-${rowIndex}`} data-pdf-block className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {rowCategories.map((category, index) => (
-                        <div key={index} className="bg-gray-50 rounded-lg p-5 border border-gray-200">
-                          <h4 className="font-semibold text-gray-900 mb-3">{category.name}</h4>
-                          <ul className="space-y-2">
-                            {category.items.map((item, itemIndex) => (
-                              <li key={itemIndex} className="flex items-start text-sm">
-                                <span className="text-blue-600 mr-2 mt-0.5">•</span>
-                                <span className="text-gray-700">{item}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
+                    <div key={`row-${rowIndex}`} data-pdf-block>
+                      {rowIndex === 0 ? (
+                        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+                          {serviceContent.title.replace(' Services Scope', '')} — Service Deliverables
+                        </h3>
+                      ) : (
+                        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+                          {serviceContent.title.replace(' Services Scope', '')} — Deliverables (continued)
+                        </h3>
+                      )}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {rowCats.map((category, index) => (
+                          <div key={index} className="bg-gray-50 rounded-lg p-5 border border-gray-200">
+                            <h4 className="font-semibold text-gray-900 mb-3">{category.name}</h4>
+                            <ul className="space-y-2">
+                              {category.items.map((item, itemIndex) => (
+                                <li key={itemIndex} className="flex items-start text-sm">
+                                  <span className="text-blue-600 mr-2 mt-0.5">•</span>
+                                  <span className="text-gray-700">{item}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   );
                 })}
 
                 {/* Implementation Timeline */}
                 {serviceContent.timeline && (
-                  <div data-pdf-block className="break-before-page">
+                  <div data-pdf-block>
                     <h3 className="text-xl font-semibold text-gray-900 mb-6">Implementation Timeline</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {serviceContent.timeline.map((phase, index) => (
