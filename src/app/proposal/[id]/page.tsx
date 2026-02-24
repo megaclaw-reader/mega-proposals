@@ -48,34 +48,52 @@ export default function ProposalPage() {
       // Remove action bar from clone
       clone.querySelectorAll('.print\\:hidden').forEach(ab => ab.remove());
       
-      // Mark section boundaries with data attributes for page breaking
-      // Each .break-before-page section should start on a new page
       wrapper.appendChild(clone);
       document.body.appendChild(wrapper);
-
-      // Wait for layout reflow
       await new Promise(r => setTimeout(r, 300));
 
-      // Get positions of page break elements relative to clone top
+      // Find ALL blocks that should never be split across pages
+      // This includes: .pdf-block (cards, timeline phases, highlights, etc.)
+      // and .break-before-page elements (force new page)
       const cloneTop = clone.getBoundingClientRect().top;
-      const breakEls = clone.querySelectorAll('.break-before-page');
-      const breakPositions: number[] = [];
-      breakEls.forEach(bel => {
-        const pos = bel.getBoundingClientRect().top - cloneTop;
-        if (pos > 10) breakPositions.push(pos);
-      });
-
-      const totalHeight = clone.scrollHeight;
       const pxWidth = 768;
 
-      // Build section ranges: [start, end) in pixels
-      const sections: { start: number; end: number }[] = [];
-      let prevStart = 0;
-      for (const bp of breakPositions) {
-        sections.push({ start: prevStart, end: bp });
-        prevStart = bp;
+      interface Block {
+        top: number;    // px from clone top
+        bottom: number; // px from clone top
+        forceBreak: boolean; // starts a new page
       }
-      sections.push({ start: prevStart, end: totalHeight });
+
+      const blocks: Block[] = [];
+      
+      // Get all marked blocks
+      const allBlocks = clone.querySelectorAll('[data-pdf-block]');
+      allBlocks.forEach(block => {
+        const rect = block.getBoundingClientRect();
+        blocks.push({
+          top: rect.top - cloneTop,
+          bottom: rect.bottom - cloneTop,
+          forceBreak: block.classList.contains('break-before-page'),
+        });
+      });
+
+      // Sort by position
+      blocks.sort((a, b) => a.top - b.top);
+
+      // If no blocks found, fall back to using all direct children
+      if (blocks.length === 0) {
+        const children = clone.children;
+        for (let i = 0; i < children.length; i++) {
+          const rect = children[i].getBoundingClientRect();
+          blocks.push({
+            top: rect.top - cloneTop,
+            bottom: rect.bottom - cloneTop,
+            forceBreak: false,
+          });
+        }
+      }
+
+      const totalHeight = clone.scrollHeight;
 
       // Render the full clone as one canvas
       const fullCanvas = await toCanvas(clone, {
@@ -88,62 +106,71 @@ export default function ProposalPage() {
       document.body.removeChild(wrapper);
 
       const pdf = new jsPDF('p', 'pt', 'letter');
-      const pageW = 612; // letter width in points
-      const pageH = 792; // letter height in points
-      const scale = fullCanvas.width / pxWidth; // pixel ratio
-      const pxToPoints = pageW / (pxWidth * scale); // convert canvas px to PDF points
+      const pageW = 612;
+      const pageH = 792;
+      const scale = fullCanvas.width / pxWidth;
+      const pxToPoints = pageW / (pxWidth * scale);
+      const pageHeightPx = pageH / pxToPoints; // page height in source pixels
 
-      let isFirstPage = true;
+      // Pack blocks onto pages using bin-packing
+      // Rule: never split a block, force new page on forceBreak
+      interface PageSlice { startPx: number; endPx: number; }
+      const pages: PageSlice[] = [];
+      let currentPageStart = 0;
+      let currentPageEnd = 0;
 
-      for (const section of sections) {
-        const sectionHeightPx = (section.end - section.start) * scale;
-        const sectionHeightPts = sectionHeightPx * pxToPoints;
-
-        // If section fits on one page, render it as one chunk
-        if (sectionHeightPts <= pageH) {
-          if (!isFirstPage) pdf.addPage();
-          
-          const sliceCanvas = document.createElement('canvas');
-          sliceCanvas.width = fullCanvas.width;
-          sliceCanvas.height = Math.ceil(sectionHeightPx);
-          const ctx = sliceCanvas.getContext('2d')!;
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-          ctx.drawImage(fullCanvas, 0, -(section.start * scale));
-          
-          pdf.addImage(
-            sliceCanvas.toDataURL('image/png'),
-            'PNG', 0, 0, pageW, sectionHeightPts
-          );
-          isFirstPage = false;
-        } else {
-          // Section is taller than one page — split it into page-sized chunks
-          const sectionStartPx = section.start * scale;
-          let offset = 0;
-          
-          while (offset < sectionHeightPx) {
-            if (!isFirstPage) pdf.addPage();
-            
-            const chunkHeight = Math.min(pageH / pxToPoints, sectionHeightPx - offset);
-            const chunkHeightPts = chunkHeight * pxToPoints;
-            
-            const sliceCanvas = document.createElement('canvas');
-            sliceCanvas.width = fullCanvas.width;
-            sliceCanvas.height = Math.ceil(chunkHeight);
-            const ctx = sliceCanvas.getContext('2d')!;
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-            ctx.drawImage(fullCanvas, 0, -(sectionStartPx + offset));
-            
-            pdf.addImage(
-              sliceCanvas.toDataURL('image/png'),
-              'PNG', 0, 0, pageW, chunkHeightPts
-            );
-            
-            offset += chunkHeight;
-            isFirstPage = false;
+      for (const block of blocks) {
+        if (block.forceBreak && currentPageEnd > currentPageStart) {
+          // Flush current page and start new one
+          pages.push({ startPx: currentPageStart, endPx: currentPageEnd });
+          currentPageStart = block.top;
+          currentPageEnd = block.bottom;
+        } else if (block.bottom - currentPageStart > pageHeightPx) {
+          // This block would overflow the current page
+          if (currentPageEnd > currentPageStart) {
+            // Flush what we have
+            pages.push({ startPx: currentPageStart, endPx: currentPageEnd });
           }
+          // Start new page with this block
+          currentPageStart = block.top;
+          currentPageEnd = block.bottom;
+          
+          // If single block is taller than a page, it gets its own page(s)
+          if (block.bottom - block.top > pageHeightPx) {
+            pages.push({ startPx: block.top, endPx: block.bottom });
+            currentPageStart = block.bottom;
+            currentPageEnd = block.bottom;
+          }
+        } else {
+          // Block fits on current page
+          currentPageEnd = block.bottom;
         }
+      }
+      // Flush last page
+      if (currentPageEnd > currentPageStart) {
+        pages.push({ startPx: currentPageStart, endPx: currentPageEnd });
+      }
+
+      // Render each page
+      for (let i = 0; i < pages.length; i++) {
+        if (i > 0) pdf.addPage();
+        
+        const { startPx, endPx } = pages[i];
+        const heightPx = (endPx - startPx) * scale;
+        const heightPts = heightPx * pxToPoints;
+        
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = fullCanvas.width;
+        sliceCanvas.height = Math.ceil(heightPx);
+        const ctx = sliceCanvas.getContext('2d')!;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+        ctx.drawImage(fullCanvas, 0, -(startPx * scale));
+        
+        pdf.addImage(
+          sliceCanvas.toDataURL('image/png'),
+          'PNG', 0, 0, pageW, heightPts
+        );
       }
 
       const filename = `${proposal.companyName.replace(/\s+/g, '_')}_MEGA_SOW.pdf`;
@@ -202,7 +229,7 @@ export default function ProposalPage() {
       {/* Main Proposal Content */}
       <div ref={proposalRef} className="max-w-6xl mx-auto bg-white">
         {/* Header */}
-        <div className="bg-white px-8 py-8">
+        <div data-pdf-block className="bg-white px-8 py-8">
           <div className="flex justify-between items-start mb-6">
             <div>
               <img src="/mega-wordmark.svg" alt="MEGA" className="h-10 mb-4" />
@@ -222,7 +249,7 @@ export default function ProposalPage() {
 
         <div className="px-8 pb-8 space-y-12">
           {/* Executive Summary */}
-          <section>
+          <section data-pdf-block>
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Executive Summary</h2>
             <p className="text-gray-700 leading-relaxed text-lg">
               {EXECUTIVE_SUMMARY_CONTENT[proposal.template]}
@@ -230,7 +257,7 @@ export default function ProposalPage() {
           </section>
 
           {/* Your Services */}
-          <section>
+          <section data-pdf-block>
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Your Services</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {proposal.selectedAgents.map((agent) => (
@@ -256,37 +283,36 @@ export default function ProposalPage() {
             const serviceContent = getServiceScope(agent, proposal.template);
             return (
               <section key={`scope-${agent}`} className="space-y-8 break-before-page">
-                <div>
+                {/* Intro + Highlights block */}
+                <div data-pdf-block>
                   <h2 className="text-2xl font-bold text-gray-900 mb-4">
                     {serviceContent.title}
                   </h2>
-                  <p className="text-gray-700 text-lg leading-relaxed">
+                  <p className="text-gray-700 text-lg leading-relaxed mb-6">
                     {serviceContent.description}
                   </p>
+                  <div className="bg-blue-50 rounded-lg p-6 space-y-4">
+                    {serviceContent.highlights.map((highlight, index) => (
+                      <div key={index} className="flex items-start">
+                        <div className="flex-shrink-0 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center mt-1 mr-3">
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-gray-800 font-medium text-sm">
+                            {highlight}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Highlights */}
-                <div className="bg-blue-50 rounded-lg p-6 space-y-4">
-                  {serviceContent.highlights.map((highlight, index) => (
-                    <div key={index} className="flex items-start">
-                      <div className="flex-shrink-0 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center mt-1 mr-3">
-                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-gray-800 font-medium text-sm">
-                          {highlight}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Service Categories */}
+                {/* Service Categories — each card is a separate PDF block */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {serviceContent.categories.map((category, index) => (
-                    <div key={index} className="bg-gray-50 rounded-lg p-5 border border-gray-200">
+                    <div data-pdf-block key={index} className="bg-gray-50 rounded-lg p-5 border border-gray-200">
                       <h4 className="font-semibold text-gray-900 mb-3">{category.name}</h4>
                       <ul className="space-y-2">
                         {category.items.map((item, itemIndex) => (
@@ -302,7 +328,7 @@ export default function ProposalPage() {
 
                 {/* Implementation Timeline */}
                 {serviceContent.timeline && (
-                  <div className="break-before-page">
+                  <div className="break-before-page" data-pdf-block>
                     <h3 className="text-xl font-semibold text-gray-900 mb-6">Implementation Timeline</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {serviceContent.timeline.map((phase, index) => (
@@ -326,7 +352,7 @@ export default function ProposalPage() {
           })}
 
           {/* Investment Summary */}
-          <section className="space-y-8 break-before-page">
+          <section data-pdf-block className="space-y-8 break-before-page">
             <h2 className="text-2xl font-bold text-gray-900">Investment Summary</h2>
             <p className="text-sm text-gray-500 font-medium">{getTermDisplayName(proposal.contractTerm)} Commitment</p>
 
