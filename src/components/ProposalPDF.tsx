@@ -7,6 +7,8 @@ import {
   Image,
   StyleSheet,
   Font,
+  Svg,
+  Path,
 } from '@react-pdf/renderer';
 import { Proposal, Agent, Template, TermOption } from '@/lib/types';
 import { calculatePricing, getTermDisplayName, getTermMonths } from '@/lib/pricing';
@@ -55,7 +57,7 @@ const s = StyleSheet.create({
   // Cover header — light background matching gomega.ai
   coverTopBar: { backgroundColor: BRAND_BLUE, height: 4, marginHorizontal: -44, marginTop: -44, marginBottom: 0 },
   coverHeader: { backgroundColor: BRAND_BLUE_LIGHT, marginHorizontal: -44, paddingHorizontal: 44, paddingTop: 24, paddingBottom: 24, marginBottom: 24 },
-  logoImage: { width: 100, height: 36, marginBottom: 14 },
+  logoSvg: { width: 100, height: 36, marginBottom: 14 },
   coverTitle: { fontSize: 24, fontWeight: 700, color: G900, marginBottom: 6 },
   coverAgents: { fontSize: 11, fontWeight: 500, color: BRAND_BLUE },
 
@@ -250,9 +252,6 @@ export function ProposalPDF({ proposal }: { proposal: Proposal }) {
   }));
   const isSingleTerm = termPricings.length === 1;
 
-  // Logo URL — use the hosted version
-  const logoUrl = 'https://mega-proposals.vercel.app/mega-wordmark-blue.png';
-
   return (
     <Document>
       {/* ===== COVER PAGE ===== */}
@@ -264,7 +263,10 @@ export function ProposalPDF({ proposal }: { proposal: Proposal }) {
 
         {/* Light header with logo */}
         <View style={s.coverHeader}>
-          <Image src={logoUrl} style={s.logoImage} />
+          {/* Mega wordmark SVG — vector, crisp at any size */}
+          <Svg viewBox="0 0 56 16" style={s.logoSvg}>
+            <Path d="M 52.483 5.276 L 52.483 3.883 L 56 3.883 L 56 15.303 L 52.483 15.303 L 52.483 13.909 L 52.391 13.909 C 51.706 14.892 50.45 15.645 48.874 15.645 C 45.882 15.645 43.598 13.247 43.598 9.638 C 43.598 6.121 45.745 3.54 48.874 3.54 C 50.45 3.54 51.706 4.294 52.391 5.276 Z M 49.833 12.311 C 51.409 12.311 52.483 11.077 52.483 9.593 C 52.483 8.04 51.364 6.875 49.833 6.875 C 48.326 6.875 47.184 7.994 47.184 9.593 C 47.184 11.191 48.326 12.311 49.833 12.311 Z M 39.613 5.276 L 39.613 3.883 L 43.131 3.883 L 43.131 16.513 C 43.131 18.683 41.852 19.871 39.659 19.871 L 32.236 19.871 L 32.236 16.308 L 38.791 16.308 C 39.271 16.308 39.613 16.034 39.613 15.577 L 39.613 13.909 L 39.522 13.909 C 38.837 14.892 37.58 15.645 36.005 15.645 C 33.013 15.645 30.729 13.247 30.729 9.638 C 30.729 6.121 32.876 3.54 36.005 3.54 C 37.58 3.54 38.837 4.294 39.522 5.276 Z M 36.964 12.311 C 38.54 12.311 39.613 11.077 39.613 9.593 C 39.613 8.04 38.494 6.875 36.964 6.875 C 35.456 6.875 34.314 7.994 34.314 9.593 C 34.314 11.191 35.456 12.311 36.964 12.311 Z M 24.352 3.54 C 28.166 3.54 30.61 6.601 30.153 10.758 L 21.931 10.758 C 22.159 11.625 22.913 12.402 24.238 12.516 C 25.106 12.585 26.042 12.219 26.408 11.648 L 30.085 11.648 C 29.354 14.252 27.001 15.645 24.284 15.645 C 20.378 15.645 18.368 12.79 18.368 9.593 C 18.368 6.167 20.835 3.54 24.352 3.54 Z M 24.329 6.646 C 23.187 6.646 22.296 7.217 21.977 8.131 L 26.659 8.131 C 26.339 7.172 25.448 6.646 24.329 6.646 Z M 17.609 0 L 17.609 15.303 L 13.841 15.303 L 13.841 5.573 L 9.89 15.303 L 7.72 15.303 L 3.769 5.573 L 3.769 15.303 L 0 15.303 L 0 0 L 5.23 0 L 8.816 9.09 L 12.425 0 Z" fill="#2563EB" />
+          </Svg>
           <Text style={s.coverTitle}>Proposal for {proposal.companyName}</Text>
           <Text style={s.coverAgents}>
             {proposal.selectedAgents.map(a => SERVICE_DESCRIPTIONS[a].title).join('  |  ')}
