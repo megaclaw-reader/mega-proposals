@@ -88,12 +88,14 @@ export default function ProposalPage() {
       const pdf = new jsPDF('p', 'pt', 'letter');
       const pageW = 612;  // Letter width in points
       const pageH = 792;  // Letter height in points
-      const margin = 20;  // Top/bottom margin
+      const marginX = 36; // Left/right margin (0.5 inch)
+      const marginY = 28; // Top/bottom margin
       const gap = 8;      // Gap between blocks on same page
-      const availableHeight = pageH - (2 * margin);
+      const contentW = pageW - (2 * marginX);
+      const availableHeight = pageH - (2 * marginY);
 
-      // Convert pixel heights to points (assuming 768px = 612pt width)
-      const pxToPoints = pageW / 768;
+      // Convert pixel heights to points
+      const pxToPoints = contentW / 768;
 
       let currentPageHeight = 0;
       let isFirstPage = true;
@@ -107,14 +109,14 @@ export default function ProposalPage() {
           currentPageHeight = 0;
         }
         
-        // Add block to current page
-        const yPosition = margin + currentPageHeight;
+        // Add block to current page — centered with margins
+        const yPosition = marginY + currentPageHeight;
         pdf.addImage(
           canvas.toDataURL('image/png'),
           'PNG',
-          0,
+          marginX,
           yPosition,
-          pageW,
+          contentW,
           blockHeightPts
         );
         
