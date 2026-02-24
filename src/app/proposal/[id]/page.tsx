@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { Proposal, ContractTerm } from '@/lib/types';
-import { calculatePricing, formatPrice, getTermDisplayName } from '@/lib/pricing';
+import { Proposal, ContractTerm, TermOption, PricingBreakdown } from '@/lib/types';
+import { calculatePricing, formatPrice, getTermDisplayName, getTermMonths } from '@/lib/pricing';
 import { getServiceScope, EXECUTIVE_SUMMARY_CONTENT, SERVICE_DESCRIPTIONS } from '@/lib/content';
 import { decodeProposal } from '@/lib/encode';
 import { format } from 'date-fns';
@@ -354,88 +354,103 @@ export default function ProposalPage() {
           {/* Investment Summary */}
           <section data-pdf-block className="space-y-8 break-before-page">
             <h2 className="text-2xl font-bold text-gray-900">Investment Summary</h2>
-            <p className="text-sm text-gray-500 font-medium">{getTermDisplayName(proposal.contractTerm)} Commitment</p>
 
-            {/* Pricing Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {proposal.pricing.agents.map((pricingAgent, index) => (
-                <div key={index} className={`rounded-lg border p-6 ${
-                  pricingAgent.agent === 'seo_paid_combo' 
-                    ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200' 
-                    : 'bg-white border-gray-200'
-                }`}>
-                  <div className="mb-3">
-                    <span className="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
-                      {pricingAgent.agent === 'seo_paid_combo' ? 'SEO/GEO + PAID ADS' 
-                        : pricingAgent.agent === 'seo' ? 'SEO/GEO' 
-                        : pricingAgent.agent === 'paid_ads' ? 'PAID ADS' 
-                        : 'WEB'}
-                    </span>
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{pricingAgent.name}</h3>
-                  <div className="mb-4">
-                    {proposal.pricing.termMonths > 1 ? (
-                      // Show upfront total per agent
-                      <>
-                        {proposal.pricing.discountAmount > 0 && (
-                          <span className="text-lg text-gray-400 line-through mr-2">
-                            ${(pricingAgent.basePrice * proposal.pricing.termMonths).toLocaleString()}
-                          </span>
-                        )}
-                        <div className="text-3xl font-bold text-gray-900">
-                          ${Math.round(pricingAgent.finalPrice * proposal.pricing.termMonths).toLocaleString()}
-                        </div>
-                        <span className="text-sm text-gray-500">${Math.round(pricingAgent.finalPrice).toLocaleString()}/mo × {proposal.pricing.termMonths} months</span>
-                      </>
-                    ) : (
-                      // Monthly — show per month
-                      <>
-                        {proposal.pricing.discountAmount > 0 && (
-                          <span className="text-lg text-gray-400 line-through mr-2">
-                            ${pricingAgent.basePrice.toLocaleString()}/mo
-                          </span>
-                        )}
-                        <div className="text-3xl font-bold text-gray-900">
-                          ${Math.round(pricingAgent.finalPrice).toLocaleString()}
-                          <span className="text-base font-normal text-gray-600">/mo</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-600">{
-                    pricingAgent.agent === 'seo_paid_combo' ? 'Full service SEO/GEO optimization and AI-powered paid advertising, bundled for maximum impact'
-                    : pricingAgent.agent === 'seo' ? 'Complete SEO/GEO strategy, content creation, technical optimization, link building, and ongoing management'
-                    : pricingAgent.agent === 'paid_ads' ? 'Full service ads management, campaign launches, budget optimization, audience targeting, and automated reporting'
-                    : 'Full website development, hosting, security, analytics, and unlimited changes with 2-day turnaround'
-                  }</p>
-                </div>
-              ))}
-            </div>
+            {(() => {
+              // Build pricing for all selected terms
+              const terms: TermOption[] = proposal.selectedTerms && proposal.selectedTerms.length > 0
+                ? proposal.selectedTerms
+                : [{ term: proposal.contractTerm, discountPercentage: proposal.discountPercentage || 0 }];
+              
+              const termPricings: { option: TermOption; pricing: PricingBreakdown }[] = terms.map(opt => ({
+                option: opt,
+                pricing: calculatePricing(proposal.selectedAgents, opt.term, opt.discountPercentage),
+              }));
 
-            {/* Total Investment */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg p-8 text-white">
-              <div className="text-center">
-                <h3 className="text-xl font-semibold mb-2">
-                  {proposal.pricing.termMonths > 1 ? 'Total Due Upfront' : 'Monthly Investment'}
-                </h3>
-                <div className="text-4xl font-bold mb-2">
-                  ${proposal.pricing.termMonths > 1 
-                    ? Math.round(proposal.pricing.upfrontTotal).toLocaleString()
-                    : Math.round(proposal.pricing.total).toLocaleString()}
-                  {proposal.pricing.termMonths === 1 && <span className="text-xl font-normal">/mo</span>}
-                </div>
-                {proposal.pricing.termMonths > 1 && (
-                  <p className="text-blue-100 text-sm">
-                    ${Math.round(proposal.pricing.total).toLocaleString()}/mo × {proposal.pricing.termMonths} months ({getTermDisplayName(proposal.contractTerm).toLowerCase()} commitment)
-                  </p>
-                )}
-                {proposal.pricing.discountAmount > 0 && (
-                  <p className="text-green-300 text-sm mt-1">
-                    Includes ${Math.round(proposal.pricing.discountAmount * proposal.pricing.termMonths).toLocaleString()} in savings with your discount
-                  </p>
-                )}
-              </div>
-            </div>
+              const isSingleTerm = termPricings.length === 1;
+
+              return (
+                <>
+                  {/* Term comparison cards */}
+                  <div className={`grid gap-6 ${termPricings.length === 1 ? 'grid-cols-1 max-w-md' : termPricings.length === 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-3'}`}>
+                    {termPricings.map(({ option, pricing }, termIndex) => {
+                      const isLowestPrice = !isSingleTerm && pricing.upfrontTotal === Math.min(...termPricings.map(tp => tp.pricing.upfrontTotal));
+                      const isBestValue = !isSingleTerm && termIndex === 0; // Longest term = best value
+                      return (
+                        <div key={option.term} className={`rounded-lg border-2 p-6 relative ${
+                          isBestValue ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'
+                        }`}>
+                          {isBestValue && (
+                            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                              <span className="bg-blue-600 text-white px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
+                                Best Value
+                              </span>
+                            </div>
+                          )}
+                          
+                          <div className="text-center mb-4 mt-1">
+                            <h3 className="text-xl font-bold text-gray-900">{getTermDisplayName(option.term)}</h3>
+                            <p className="text-sm text-gray-500">{getTermMonths(option.term)} months</p>
+                          </div>
+
+                          {/* Per-agent breakdown */}
+                          <div className="space-y-3 mb-4">
+                            {pricing.agents.map((agent, i) => (
+                              <div key={i} className="flex justify-between items-center text-sm">
+                                <span className="text-gray-700">{agent.name}</span>
+                                <div className="text-right">
+                                  {option.discountPercentage > 0 ? (
+                                    <>
+                                      <span className="text-gray-400 line-through text-xs mr-1">${agent.basePrice.toLocaleString()}</span>
+                                      <span className="font-semibold text-gray-900">${Math.round(agent.finalPrice).toLocaleString()}/mo</span>
+                                    </>
+                                  ) : (
+                                    <span className="font-semibold text-gray-900">${agent.finalPrice.toLocaleString()}/mo</span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          <hr className="my-4" />
+
+                          {/* Monthly total */}
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-gray-700 font-medium">Monthly Rate</span>
+                            <span className="text-lg font-bold text-gray-900">${Math.round(pricing.total).toLocaleString()}/mo</span>
+                          </div>
+
+                          {/* Upfront total */}
+                          <div className="bg-gray-100 rounded-lg p-4 text-center mt-4">
+                            <p className="text-sm text-gray-500 mb-1">Total Due Upfront</p>
+                            <p className="text-3xl font-bold text-blue-600">${Math.round(pricing.upfrontTotal).toLocaleString()}</p>
+                            {option.discountPercentage > 0 && (
+                              <p className="text-green-600 text-sm mt-1 font-medium">
+                                {option.discountPercentage}% discount applied
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Savings comparison (multi-term only) */}
+                  {!isSingleTerm && termPricings.length >= 2 && (() => {
+                    const shortestTerm = termPricings[termPricings.length - 1];
+                    const longestTerm = termPricings[0];
+                    const monthlySavings = Math.round(shortestTerm.pricing.total - longestTerm.pricing.total);
+                    if (monthlySavings <= 0) return null;
+                    return (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                        <p className="text-green-800 font-medium">
+                          Save <span className="font-bold">${monthlySavings.toLocaleString()}/mo</span> by choosing {getTermDisplayName(longestTerm.option.term)} over {getTermDisplayName(shortestTerm.option.term)}
+                        </p>
+                      </div>
+                    );
+                  })()}
+                </>
+              );
+            })()}
           </section>
         </div>
       </div>

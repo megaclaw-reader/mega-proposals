@@ -4,14 +4,23 @@ export type Template = 'leads' | 'ecom';
 
 export type ContractTerm = 'annual' | 'bi_annual' | 'quarterly' | 'monthly';
 
+export interface TermOption {
+  term: ContractTerm;
+  discountPercentage: number;
+}
+
 export interface ProposalConfig {
   id: string;
   customerName: string;
   companyName: string;
   template: Template;
   selectedAgents: Agent[];
+  /** @deprecated Use selectedTerms instead */
   contractTerm: ContractTerm;
+  /** @deprecated Use selectedTerms instead */
   discountPercentage?: number;
+  /** Multiple term options with per-term discounts */
+  selectedTerms?: TermOption[];
   salesRepName: string;
   salesRepEmail: string;
   createdAt: Date;

@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Agent, Template, ContractTerm } from '@/lib/types';
-import { calculatePricing, formatPrice, getTermDisplayName } from '@/lib/pricing';
+import { Agent, Template, ContractTerm, TermOption } from '@/lib/types';
+import { calculatePricing, formatPrice, getTermDisplayName, getTermMonths } from '@/lib/pricing';
 import { encodeProposal } from '@/lib/encode';
+
+const AVAILABLE_TERMS: ContractTerm[] = ['annual', 'bi_annual', 'quarterly'];
 
 export default function CreateProposal() {
   const router = useRouter();
@@ -13,10 +15,14 @@ export default function CreateProposal() {
     companyName: '',
     template: 'leads' as Template,
     selectedAgents: [] as Agent[],
-    contractTerm: 'annual' as ContractTerm,
-    discountPercentage: '',
     salesRepName: '',
     salesRepEmail: '',
+  });
+  const [termOptions, setTermOptions] = useState<Record<ContractTerm, { selected: boolean; discount: string }>>({
+    annual: { selected: true, discount: '' },
+    bi_annual: { selected: false, discount: '' },
+    quarterly: { selected: false, discount: '' },
+    monthly: { selected: false, discount: '' },
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -29,14 +35,39 @@ export default function CreateProposal() {
     }));
   };
 
+  const handleTermToggle = (term: ContractTerm) => {
+    setTermOptions(prev => ({
+      ...prev,
+      [term]: { ...prev[term], selected: !prev[term].selected },
+    }));
+  };
+
+  const handleTermDiscount = (term: ContractTerm, discount: string) => {
+    setTermOptions(prev => ({
+      ...prev,
+      [term]: { ...prev[term], discount },
+    }));
+  };
+
+  const getSelectedTerms = (): TermOption[] => {
+    return AVAILABLE_TERMS
+      .filter(term => termOptions[term].selected)
+      .map(term => ({
+        term,
+        discountPercentage: parseFloat(termOptions[term].discount) || 0,
+      }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
+      const selectedTerms = getSelectedTerms();
       const encoded = encodeProposal({
         ...formData,
-        discountPercentage: formData.discountPercentage ? parseFloat(formData.discountPercentage) : undefined,
+        contractTerm: selectedTerms[0]?.term || 'annual',
+        selectedTerms,
       });
       router.push(`/proposal/${encoded}`);
     } catch (error) {
@@ -46,80 +77,50 @@ export default function CreateProposal() {
     }
   };
 
-  // Calculate preview pricing
-  const previewPricing = calculatePricing(
-    formData.selectedAgents,
-    formData.contractTerm,
-    parseFloat(formData.discountPercentage) || 0
-  );
+  const selectedTerms = getSelectedTerms();
+  const hasAgents = formData.selectedAgents.length > 0;
+  const hasTerms = selectedTerms.length > 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto py-8 px-4">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="bg-blue-600 px-6 py-4">
-            <div>
-              <h1 className="text-2xl font-bold text-white">MEGA Proposal Generator</h1>
-              <p className="text-blue-100 mt-1">Create a branded proposal for your customer</p>
-            </div>
+            <h1 className="text-2xl font-bold text-white">MEGA Proposal Generator</h1>
+            <p className="text-blue-100 mt-1">Create a branded proposal for your customer</p>
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
             {/* Customer Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Customer Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.customerName}
+                <label className="block text-sm font-medium text-gray-700 mb-2">Customer Name *</label>
+                <input type="text" required value={formData.customerName}
                   onChange={(e) => setFormData(prev => ({ ...prev, customerName: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Company Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.companyName}
+                <label className="block text-sm font-medium text-gray-700 mb-2">Company Name *</label>
+                <input type="text" required value={formData.companyName}
                   onChange={(e) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </div>
 
             {/* Template Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Template Type *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-3">Template Type *</label>
               <div className="space-y-2">
                 <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="template"
-                    value="leads"
-                    checked={formData.template === 'leads'}
+                  <input type="radio" name="template" value="leads" checked={formData.template === 'leads'}
                     onChange={(e) => setFormData(prev => ({ ...prev, template: e.target.value as Template }))}
-                    className="mr-2 text-blue-600"
-                  />
+                    className="mr-2 text-blue-600" />
                   <span>Leads-based (Optimized for lead generation)</span>
                 </label>
                 <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="template"
-                    value="ecom"
-                    checked={formData.template === 'ecom'}
+                  <input type="radio" name="template" value="ecom" checked={formData.template === 'ecom'}
                     onChange={(e) => setFormData(prev => ({ ...prev, template: e.target.value as Template }))}
-                    className="mr-2 text-blue-600"
-                  />
+                    className="mr-2 text-blue-600" />
                   <span>eCom-based (Optimized for eCommerce)</span>
                 </label>
               </div>
@@ -127,154 +128,106 @@ export default function CreateProposal() {
 
             {/* Agents Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Select Agents to Include *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-3">Select Agents to Include *</label>
               <div className="space-y-2">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formData.selectedAgents.includes('seo')}
-                    onChange={() => handleAgentToggle('seo')}
-                    className="mr-2 text-blue-600"
-                  />
-                  <span>SEO & GEO Agent</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formData.selectedAgents.includes('paid_ads')}
-                    onChange={() => handleAgentToggle('paid_ads')}
-                    className="mr-2 text-blue-600"
-                  />
-                  <span>Paid Ads Agent</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formData.selectedAgents.includes('website')}
-                    onChange={() => handleAgentToggle('website')}
-                    className="mr-2 text-blue-600"
-                  />
-                  <span>Website Agent</span>
-                </label>
+                {(['seo', 'paid_ads', 'website'] as Agent[]).map(agent => (
+                  <label key={agent} className="flex items-center">
+                    <input type="checkbox" checked={formData.selectedAgents.includes(agent)}
+                      onChange={() => handleAgentToggle(agent)} className="mr-2 text-blue-600" />
+                    <span>{agent === 'seo' ? 'SEO & GEO Agent' : agent === 'paid_ads' ? 'Paid Ads Agent' : 'Website Agent'}</span>
+                  </label>
+                ))}
               </div>
             </div>
 
-            {/* Contract Term */}
+            {/* Commitment Options */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Contract Term *
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Commitment Options * <span className="text-gray-400 font-normal">(select one or more to show as pricing tiers)</span>
               </label>
-              <select
-                value={formData.contractTerm}
-                onChange={(e) => setFormData(prev => ({ ...prev, contractTerm: e.target.value as ContractTerm }))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="annual">Annual</option>
-                <option value="bi_annual">Bi-Annual</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-            </div>
-
-            {/* Discount */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Discount Percentage (Optional)
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="0.1"
-                value={formData.discountPercentage}
-                onChange={(e) => setFormData(prev => ({ ...prev, discountPercentage: e.target.value }))}
-                placeholder="e.g., 10 for 10%"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <div className="space-y-3">
+                {AVAILABLE_TERMS.map(term => (
+                  <div key={term} className={`border rounded-lg p-4 transition-colors ${termOptions[term].selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center cursor-pointer">
+                        <input type="checkbox" checked={termOptions[term].selected}
+                          onChange={() => handleTermToggle(term)} className="mr-3 text-blue-600" />
+                        <div>
+                          <span className="font-medium text-gray-900">{getTermDisplayName(term)}</span>
+                          <span className="text-gray-500 text-sm ml-2">({getTermMonths(term)} months, paid upfront)</span>
+                        </div>
+                      </label>
+                      {termOptions[term].selected && (
+                        <div className="flex items-center gap-2">
+                          <label className="text-sm text-gray-600">Discount:</label>
+                          <input type="number" min="0" max="50" step="1"
+                            value={termOptions[term].discount}
+                            onChange={(e) => handleTermDiscount(term, e.target.value)}
+                            placeholder="0"
+                            className="w-20 border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                          <span className="text-sm text-gray-600">%</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Sales Rep Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Sales Rep Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.salesRepName}
+                <label className="block text-sm font-medium text-gray-700 mb-2">Sales Rep Name *</label>
+                <input type="text" required value={formData.salesRepName}
                   onChange={(e) => setFormData(prev => ({ ...prev, salesRepName: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Sales Rep Email *
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={formData.salesRepEmail}
+                <label className="block text-sm font-medium text-gray-700 mb-2">Sales Rep Email *</label>
+                <input type="email" required value={formData.salesRepEmail}
                   onChange={(e) => setFormData(prev => ({ ...prev, salesRepEmail: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </div>
 
             {/* Pricing Preview */}
-            {formData.selectedAgents.length > 0 && (
+            {hasAgents && hasTerms && (
               <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Pricing Preview</h3>
-                <div className="space-y-2">
-                  {previewPricing.agents.map((agent, index) => (
-                    <div key={index} className="flex justify-between items-center">
-                      <span className="text-gray-700">{agent.name}</span>
-                      <div className="text-right">
-                        {previewPricing.discountAmount > 0 ? (
-                          <>
-                            <span className="text-gray-500 line-through mr-2">
-                              {formatPrice(agent.basePrice)}
-                            </span>
-                            <span className="text-green-600 font-semibold">
-                              {formatPrice(agent.finalPrice)}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="font-semibold">{formatPrice(agent.finalPrice)}</span>
-                        )}
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Pricing Preview</h3>
+                <div className="space-y-4">
+                  {selectedTerms.map(termOpt => {
+                    const pricing = calculatePricing(formData.selectedAgents, termOpt.term, termOpt.discountPercentage);
+                    return (
+                      <div key={termOpt.term} className="border border-gray-200 rounded-lg p-3 bg-white">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-semibold text-gray-900">{getTermDisplayName(termOpt.term)}</span>
+                          {termOpt.discountPercentage > 0 && (
+                            <span className="text-green-600 text-sm font-medium">{termOpt.discountPercentage}% off</span>
+                          )}
+                        </div>
+                        {pricing.agents.map((agent, i) => (
+                          <div key={i} className="flex justify-between text-sm text-gray-600">
+                            <span>{agent.name}</span>
+                            <span>${Math.round(agent.finalPrice).toLocaleString()}/mo</span>
+                          </div>
+                        ))}
+                        <hr className="my-2" />
+                        <div className="flex justify-between font-bold">
+                          <span>Due Upfront ({pricing.termMonths} mo)</span>
+                          <span className="text-blue-600">${Math.round(pricing.upfrontTotal).toLocaleString()}</span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                  <hr className="my-2" />
-                  <div className="flex justify-between items-center text-lg font-bold">
-                    <span>Monthly Rate</span>
-                    <span className="text-blue-600">{formatPrice(previewPricing.total)}/mo</span>
-                  </div>
-                  {previewPricing.discountAmount > 0 && (
-                    <div className="text-sm text-green-600">
-                      Monthly discount: -{formatPrice(previewPricing.discountAmount)}
-                    </div>
-                  )}
-                  {previewPricing.termMonths > 1 && (
-                    <div className="flex justify-between items-center text-lg font-bold mt-2 pt-2 border-t border-gray-200">
-                      <span>Due Upfront ({previewPricing.termMonths} months)</span>
-                      <span className="text-blue-600">{formatPrice(previewPricing.upfrontTotal)}</span>
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            {/* Submit Button */}
+            {/* Submit */}
             <div className="flex justify-end">
-              <button
-                type="submit"
-                disabled={isSubmitting || formData.selectedAgents.length === 0}
-                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-8 py-3 rounded-lg font-semibold transition-colors"
-              >
+              <button type="submit"
+                disabled={isSubmitting || !hasAgents || !hasTerms}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-8 py-3 rounded-lg font-semibold transition-colors">
                 {isSubmitting ? 'Generating...' : 'Generate Proposal'}
               </button>
             </div>
