@@ -25,6 +25,7 @@ export interface ProposalConfig {
   salesRepEmail: string;
   createdAt: Date;
   isLocked?: boolean;
+  personalizedContent?: PersonalizedContent;
 }
 
 export interface SignatureData {
@@ -56,6 +57,17 @@ export interface PricingBreakdown {
   /** Number of months in the term */
   termMonths: number;
   term: ContractTerm;
+}
+
+/** Personalized content extracted from meeting transcript */
+export interface PersonalizedContent {
+  companySituation?: string;
+  keyChallenges: Array<{
+    agent: Agent | 'general';
+    challenge: string;
+    megaSolution: string;
+  }>;
+  specificGoals?: string[];
 }
 
 export interface ServiceHighlight {

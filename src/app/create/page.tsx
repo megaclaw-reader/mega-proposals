@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Agent, Template, ContractTerm, TermOption } from '@/lib/types';
 import { calculatePricing, formatPrice, getTermDisplayName, getTermMonths } from '@/lib/pricing';
 import { encodeProposal } from '@/lib/encode';
+import { extractFromTranscript, fetchFirefliesTranscript } from '@/lib/transcript';
 
 const AVAILABLE_TERMS: ContractTerm[] = ['annual', 'bi_annual', 'quarterly'];
 
@@ -24,6 +25,8 @@ export default function CreateProposal() {
     quarterly: { selected: false, discount: '' },
     monthly: { selected: false, discount: '' },
   });
+  const [transcriptText, setTranscriptText] = useState('');
+  const [firefliesUrl, setFirefliesUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAgentToggle = (agent: Agent) => {
@@ -58,16 +61,41 @@ export default function CreateProposal() {
       }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
       const selectedTerms = getSelectedTerms();
+
+      // Process transcript if provided
+      let personalizedContent;
+      let transcript = transcriptText.trim();
+
+      if (!transcript && firefliesUrl.trim()) {
+        try {
+          transcript = await fetchFirefliesTranscript(firefliesUrl.trim());
+        } catch (err) {
+          console.error('Failed to fetch Fireflies transcript:', err);
+          alert('Could not fetch the Fireflies transcript. You can paste it manually instead.');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      if (transcript) {
+        personalizedContent = extractFromTranscript(transcript, formData.selectedAgents);
+        // Only include if we extracted meaningful content
+        if (personalizedContent.keyChallenges.length === 0 && !personalizedContent.companySituation) {
+          personalizedContent = undefined;
+        }
+      }
+
       const encoded = encodeProposal({
         ...formData,
         contractTerm: selectedTerms[0]?.term || 'annual',
         selectedTerms,
+        personalizedContent,
       });
       router.push(`/proposal/${encoded}`);
     } catch (error) {
@@ -187,6 +215,38 @@ export default function CreateProposal() {
                 <input type="email" required value={formData.salesRepEmail}
                   onChange={(e) => setFormData(prev => ({ ...prev, salesRepEmail: e.target.value }))}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+            </div>
+
+            {/* Meeting Notes / Transcript */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Meeting Notes / Transcript <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <p className="text-sm text-gray-500 mb-3">
+                Paste your call transcript or Fireflies/JustCall link. We'll extract relevant insights to personalize the proposal.
+              </p>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Fireflies URL</label>
+                  <input
+                    type="url"
+                    placeholder="https://app.fireflies.ai/view/..."
+                    value={firefliesUrl}
+                    onChange={(e) => setFirefliesUrl(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Or paste transcript directly</label>
+                  <textarea
+                    rows={6}
+                    placeholder="Paste meeting transcript or notes here..."
+                    value={transcriptText}
+                    onChange={(e) => setTranscriptText(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                  />
+                </div>
               </div>
             </div>
 

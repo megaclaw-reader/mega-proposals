@@ -1,4 +1,4 @@
-import { ProposalConfig, Agent, Template, ContractTerm, TermOption } from './types';
+import { ProposalConfig, Agent, Template, ContractTerm, TermOption, PersonalizedContent } from './types';
 
 /**
  * Encode proposal config into a compact URL-safe string.
@@ -25,6 +25,10 @@ export function encodeProposal(config: Omit<ProposalConfig, 'id' | 'createdAt'>)
     // Legacy single-term format
     payload.ct = config.contractTerm;
     payload.d = config.discountPercentage || 0;
+  }
+
+  if (config.personalizedContent) {
+    payload.pc = config.personalizedContent;
   }
 
   const json = JSON.stringify(payload);
@@ -75,6 +79,7 @@ export function decodeProposal(encoded: string): ProposalConfig | null {
       salesRepName: payload.sr,
       salesRepEmail: payload.se,
       createdAt: new Date(payload.ts),
+      personalizedContent: payload.pc as PersonalizedContent | undefined,
     };
   } catch {
     return null;

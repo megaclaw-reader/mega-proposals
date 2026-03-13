@@ -10,7 +10,7 @@ import {
   Svg,
   Path,
 } from '@react-pdf/renderer';
-import { Proposal, Agent, Template, TermOption } from '@/lib/types';
+import { Proposal, Agent, Template, TermOption, PersonalizedContent } from '@/lib/types';
 import { calculatePricing, getTermDisplayName, getTermMonths } from '@/lib/pricing';
 import { getServiceScope, EXECUTIVE_SUMMARY_CONTENT, SERVICE_DESCRIPTIONS } from '@/lib/content';
 import { format } from 'date-fns';
@@ -294,6 +294,69 @@ export function ProposalPDF({ proposal }: { proposal: Proposal }) {
         <Text style={[s.body, { marginBottom: 18 }]}>
           {EXECUTIVE_SUMMARY_CONTENT[proposal.template]}
         </Text>
+
+        {/* Understanding [Company Name] — from transcript */}
+        {proposal.personalizedContent && proposal.personalizedContent.keyChallenges.length > 0 && (
+          <View>
+            <Text style={s.secTitle}>Understanding {proposal.companyName}</Text>
+            <View style={s.secBar} />
+            {proposal.personalizedContent.companySituation && (
+              <Text style={[s.body, { marginBottom: 10 }]}>{proposal.personalizedContent.companySituation}</Text>
+            )}
+            {/* Group challenges by agent */}
+            {(() => {
+              const pc = proposal.personalizedContent!;
+              const agentOrder: (Agent | 'general')[] = [...proposal.selectedAgents, 'general'];
+              const grouped = agentOrder
+                .map(a => ({
+                  agent: a,
+                  items: pc.keyChallenges.filter(c => c.agent === a),
+                }))
+                .filter(g => g.items.length > 0);
+
+              const AGENT_LABELS: Record<string, string> = {
+                seo: 'Search & Visibility',
+                paid_ads: 'Paid Advertising',
+                website: 'Website & Conversions',
+                general: 'Growth & Strategy',
+              };
+
+              return grouped.map((group, gi) => (
+                <View key={gi} style={{ marginBottom: 10 }}>
+                  <Text style={s.label}>{AGENT_LABELS[group.agent] || group.agent}</Text>
+                  {group.items.map((item, i) => (
+                    <View key={i} style={[s.hlBox, { marginBottom: 6 }]} wrap={false}>
+                      <View style={s.hlRow}>
+                        <View style={s.hlIcon}><Text style={s.hlCheck}>!</Text></View>
+                        <Text style={[s.hlText, { fontWeight: 500 }]}>{item.challenge}</Text>
+                      </View>
+                      <View style={[s.hlRow, { marginBottom: 0, marginTop: 4 }]}>
+                        <View style={[s.hlIcon, { backgroundColor: GREEN_600 }]}><Text style={s.hlCheck}>✓</Text></View>
+                        <Text style={s.hlText}>{item.megaSolution}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              ));
+            })()}
+          </View>
+        )}
+
+        {/* Your Goals — from transcript */}
+        {proposal.personalizedContent?.specificGoals && proposal.personalizedContent.specificGoals.length > 0 && (
+          <View wrap={false}>
+            <Text style={s.secTitle}>Your Goals</Text>
+            <View style={s.secBar} />
+            <View style={s.hlBox}>
+              {proposal.personalizedContent.specificGoals.map((goal, i) => (
+                <View key={i} style={[s.hlRow, i === proposal.personalizedContent!.specificGoals!.length - 1 ? { marginBottom: 0 } : {}]}>
+                  <View style={s.hlIcon}><Text style={s.hlCheck}>→</Text></View>
+                  <Text style={s.hlText}>{goal}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Your Services */}
         <Text style={s.secTitle}>Your Services</Text>
