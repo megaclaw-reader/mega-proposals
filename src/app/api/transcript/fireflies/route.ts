@@ -5,11 +5,21 @@ const FIREFLIES_GRAPHQL = 'https://api.fireflies.ai/graphql';
 
 /**
  * Extract transcript ID from a Fireflies URL.
- * URLs look like: https://app.fireflies.ai/view/Some-Title-id01KPBTRF03VFXSTWX9JZ9902YK
+ * Handles multiple URL formats:
+ *   https://app.fireflies.ai/view/Some-Title-id01KPBTRF03VFXSTWX9JZ9902YK
+ *   https://app.fireflies.ai/view/01KPBTRF03VFXSTWX9JZ9902YK
+ *   https://app.fireflies.ai/notepad/01KPBTRF03VFXSTWX9JZ9902YK
  */
 function extractTranscriptId(url: string): string | null {
-  const match = url.match(/-id([A-Z0-9]+)$/i) || url.match(/id([A-Z0-9]{20,})$/i);
-  return match ? match[1] : null;
+  // Format: ...-id<ID> at end of path
+  const idMatch = url.match(/-id([A-Z0-9]+)$/i) || url.match(/id([A-Z0-9]{20,})$/i);
+  if (idMatch) return idMatch[1];
+
+  // Format: .../view/<ID> or .../notepad/<ID> (bare ID as last path segment)
+  const pathMatch = url.match(/(?:view|notepad)\/([A-Z0-9]{20,})(?:[?#]|$)/i);
+  if (pathMatch) return pathMatch[1];
+
+  return null;
 }
 
 export async function POST(req: NextRequest) {
@@ -63,16 +73,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
     }
 
-    // Build transcript text: prefer summary, fall back to sentences
-    let text = '';
+    // Build transcript text: combine overview + shorthand for best extraction
+    const parts: string[] = [];
+    if (transcript.summary?.overview) {
+      parts.push(transcript.summary.overview);
+    }
     if (transcript.summary?.shorthand_bullet) {
-      text = transcript.summary.shorthand_bullet;
-    } else if (transcript.summary?.overview) {
-      text = transcript.summary.overview;
-    } else if (transcript.sentences?.length > 0) {
-      text = transcript.sentences.map((s: { text: string }) => s.text).join(' ');
+      parts.push(transcript.summary.shorthand_bullet);
+    }
+    if (parts.length === 0 && transcript.sentences?.length > 0) {
+      parts.push(transcript.sentences.map((s: { text: string }) => s.text).join(' '));
     }
 
+    const text = parts.join('\n\n');
     if (!text) {
       return NextResponse.json({ error: 'No transcript content found (may still be processing)' }, { status: 422 });
     }
