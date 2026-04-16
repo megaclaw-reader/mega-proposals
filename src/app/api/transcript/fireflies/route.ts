@@ -11,8 +11,8 @@ const FIREFLIES_GRAPHQL = 'https://api.fireflies.ai/graphql';
  *   https://app.fireflies.ai/notepad/01KPBTRF03VFXSTWX9JZ9902YK
  */
 function extractTranscriptId(url: string): string | null {
-  // Format: ...-id<ID> at end of path
-  const idMatch = url.match(/-id([A-Z0-9]+)$/i) || url.match(/id([A-Z0-9]{20,})$/i);
+  // Format: ...-id<ID> or ...::<ID> at end of path
+  const idMatch = url.match(/(?:-id|::)([A-Z0-9]{20,})(?:[?#]|$)/i) || url.match(/id([A-Z0-9]{20,})$/i);
   if (idMatch) return idMatch[1];
 
   // Format: .../view/<ID> or .../notepad/<ID> (bare ID as last path segment)
