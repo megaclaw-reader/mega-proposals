@@ -1,5 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+const FIREFLIES_API_KEY = process.env.FIREFLIES_API_KEY || '';
+const FIREFLIES_GRAPHQL = 'https://api.fireflies.ai/graphql';
+
+/**
+ * Extract transcript ID from a Fireflies URL.
+ * URLs look like: https://app.fireflies.ai/view/Some-Title-id01KPBTRF03VFXSTWX9JZ9902YK
+ */
+function extractTranscriptId(url: string): string | null {
+  const match = url.match(/-id([A-Z0-9]+)$/i) || url.match(/id([A-Z0-9]{20,})$/i);
+  return match ? match[1] : null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { url } = await req.json();
@@ -7,43 +19,67 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid Fireflies URL' }, { status: 400 });
     }
 
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
+    if (!FIREFLIES_API_KEY) {
+      return NextResponse.json({ error: 'Fireflies API key not configured' }, { status: 500 });
+    }
+
+    const transcriptId = extractTranscriptId(url);
+    if (!transcriptId) {
+      return NextResponse.json({ error: 'Could not extract transcript ID from URL' }, { status: 400 });
+    }
+
+    // Fetch transcript via GraphQL API
+    const gqlRes = await fetch(FIREFLIES_GRAPHQL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${FIREFLIES_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: `query Transcript($id: String!) {
+          transcript(id: $id) {
+            title
+            summary {
+              overview
+              shorthand_bullet
+            }
+            sentences {
+              text
+            }
+          }
+        }`,
+        variables: { id: transcriptId },
+      }),
     });
-    if (!res.ok) {
-      return NextResponse.json({ error: 'Failed to fetch Fireflies page' }, { status: 502 });
+
+    if (!gqlRes.ok) {
+      return NextResponse.json({ error: 'Fireflies API request failed' }, { status: 502 });
     }
 
-    const html = await res.text();
-
-    // Extract __NEXT_DATA__ JSON
-    const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
-    if (!match) {
-      return NextResponse.json({ error: 'Could not find transcript data on page' }, { status: 422 });
-    }
-
-    const data = JSON.parse(match[1]);
-
-    // Navigate to the summary comment
-    let transcript = '';
-    try {
-      const props = data.props?.pageProps;
-      // Try multiple paths since Fireflies structure may vary
-      transcript =
-        props?.summaryMeetingNoteComment?.comment ||
-        props?.transcript?.sentences?.map((s: { text: string }) => s.text).join(' ') ||
-        props?.summary ||
-        '';
-    } catch {
-      return NextResponse.json({ error: 'Could not extract transcript from page data' }, { status: 422 });
-    }
+    const gqlData = await gqlRes.json();
+    const transcript = gqlData?.data?.transcript;
 
     if (!transcript) {
-      return NextResponse.json({ error: 'No transcript content found' }, { status: 422 });
+      return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ transcript });
+    // Build transcript text: prefer summary, fall back to sentences
+    let text = '';
+    if (transcript.summary?.shorthand_bullet) {
+      text = transcript.summary.shorthand_bullet;
+    } else if (transcript.summary?.overview) {
+      text = transcript.summary.overview;
+    } else if (transcript.sentences?.length > 0) {
+      text = transcript.sentences.map((s: { text: string }) => s.text).join(' ');
+    }
+
+    if (!text) {
+      return NextResponse.json({ error: 'No transcript content found (may still be processing)' }, { status: 422 });
+    }
+
+    return NextResponse.json({ transcript: text, title: transcript.title });
   } catch (error) {
+    console.error('Fireflies API error:', error);
     return NextResponse.json({ error: 'Internal error processing transcript' }, { status: 500 });
   }
 }
