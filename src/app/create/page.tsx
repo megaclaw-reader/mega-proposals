@@ -158,13 +158,16 @@ export default function CreateProposal() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">Select Agents to Include *</label>
               <div className="space-y-2">
-                {(['seo', 'paid_ads', 'website'] as Agent[]).map(agent => (
-                  <label key={agent} className="flex items-center">
-                    <input type="checkbox" checked={formData.selectedAgents.includes(agent)}
-                      onChange={() => handleAgentToggle(agent)} className="mr-2 text-blue-600" />
-                    <span>{agent === 'seo' ? 'SEO & GEO Agent' : agent === 'paid_ads' ? 'Paid Ads Agent' : 'Website Agent'}</span>
-                  </label>
-                ))}
+                {(['seo', 'paid_ads', 'crm', 'website'] as Agent[]).map(agent => {
+                  const labels: Record<Agent, string> = { seo: 'SEO & GEO Agent', paid_ads: 'Paid Ads Agent', crm: 'CRM Agent', website: 'Website Agent' };
+                  return (
+                    <label key={agent} className="flex items-center">
+                      <input type="checkbox" checked={formData.selectedAgents.includes(agent)}
+                        onChange={() => handleAgentToggle(agent)} className="mr-2 text-blue-600" />
+                      <span>{labels[agent]}</span>
+                    </label>
+                  );
+                })}
               </div>
             </div>
 

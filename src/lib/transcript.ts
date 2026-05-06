@@ -46,6 +46,17 @@ const AGENT_KEYWORDS: Record<Agent, string[]> = {
     'slow site', 'slow website', 'outdated', 'rebrand',
     'web development', 'frontend', 'accessibility',
   ],
+  crm: [
+    'crm', 'customer relationship', 'pipeline', 'lead management',
+    'follow up', 'follow-up', 'missed calls', 'voicemail',
+    'appointment booking', 'scheduling', 'lead routing',
+    'lead qualification', 'lead scoring', 'nurturing',
+    'hubspot', 'salesforce', 'highlevel', 'gohighlevel',
+    'servicetitan', 'call handling', 'inbound calls',
+    'after hours', 'after-hours', 'no-show', 'booking',
+    'sms', 'text message', 'drip campaign', 'automation',
+    'deal stage', 'pipeline management', 'contact management',
+  ],
 };
 
 const GENERAL_KEYWORDS = [
@@ -76,6 +87,11 @@ const MEGA_SOLUTIONS: Record<Agent, string[]> = {
     'MEGA\'s web team creates conversion-focused designs backed by data, ensuring your website works as your best salesperson.',
     'Our AI-enhanced web development ensures your site loads fast, ranks well, and converts visitors at every touchpoint.',
   ],
+  crm: [
+    'Our CRM Agent handles inbound calls instantly, qualifies leads automatically, and books appointments — so no lead ever goes to voicemail.',
+    'MEGA\'s AI-powered CRM Agent automates your entire pipeline: call handling, lead routing, follow-ups, and reporting — all without manual work.',
+    'Our CRM Agent integrates with your existing system or provides MEGA\'s built-in CRM, ensuring every lead is tracked, scored, and nurtured to close.',
+  ],
 };
 
 const GENERAL_SOLUTIONS = [
@@ -88,7 +104,7 @@ const GENERAL_SOLUTIONS = [
  */
 function classifySentence(sentence: string): Agent | 'general' | null {
   const lower = sentence.toLowerCase();
-  const scores: Record<string, number> = { seo: 0, paid_ads: 0, website: 0, general: 0 };
+  const scores: Record<string, number> = { seo: 0, paid_ads: 0, website: 0, crm: 0, general: 0 };
 
   for (const [agent, keywords] of Object.entries(AGENT_KEYWORDS)) {
     for (const kw of keywords) {

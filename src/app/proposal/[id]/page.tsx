@@ -135,11 +135,12 @@ export default function ProposalPage() {
               )}
               {(() => {
                 const pc = proposal.personalizedContent!;
-                const agentOrder: Array<'seo' | 'paid_ads' | 'website' | 'general'> = [...proposal.selectedAgents, 'general'];
+                const agentOrder: Array<'seo' | 'paid_ads' | 'website' | 'crm' | 'general'> = [...proposal.selectedAgents, 'general'];
                 const AGENT_LABELS: Record<string, string> = {
                   seo: 'Search & Visibility',
                   paid_ads: 'Paid Advertising',
                   website: 'Website & Conversions',
+                  crm: 'CRM & Lead Management',
                   general: 'Growth & Strategy',
                 };
                 const grouped = agentOrder

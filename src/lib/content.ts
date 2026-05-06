@@ -32,6 +32,12 @@ export const SERVICE_DESCRIPTIONS = {
     shortDescription: "Custom AI-optimized websites built for conversion",
     badge: "WEB",
     color: "blue"
+  },
+  crm: {
+    title: "CRM Agent",
+    shortDescription: "AI-powered lead conversion assistant that handles calls, qualifies leads, and automates your pipeline",
+    badge: "CRM",
+    color: "blue"
   }
 };
 
@@ -445,6 +451,127 @@ export function getServiceScope(agent: Agent, template: Template): ServiceConten
               "Security monitoring and malware protection",
               "Regular security updates and patches",
               "Privacy policy and terms of service setup"
+            ]
+          }
+        ]
+      };
+
+    case 'crm':
+      return {
+        title: "CRM Agent Services Scope",
+        description: "Our CRM Agent is your AI-powered lead conversion assistant. It handles inbound calls instantly, qualifies leads automatically, books appointments, nurtures prospects through multi-channel follow-ups, and keeps your pipeline organized — so your team can focus on closing deals instead of chasing admin work. Use MEGA's built-in CRM or connect the agent to your existing system.",
+        highlights: [
+          "Dedicated Account Manager: You'll work one-on-one with a dedicated CRM Account Manager available for monthly strategy meetings to review pipeline health, optimize workflows, and improve conversion rates.",
+          "Works With Your Existing CRM: Already using HubSpot, HighLevel, ServiceTitan, or another CRM? Our agent integrates seamlessly. Or use MEGA's built-in CRM at no extra cost — either way, every lead is tracked and nothing falls through the cracks.",
+          "Ongoing Optimization: Our AI continuously analyzes conversations, bookings, and lost leads to improve scripts, timing, and workflows over time. It gets smarter the longer it runs."
+        ],
+        categories: [
+          {
+            name: "Call Handling",
+            items: [
+              "Answer every inbound call instantly, 24/7",
+              "Capture missed and after-hours calls — no lead goes to voicemail",
+              "AI-powered call routing based on caller intent",
+              "Automatic call recording and transcription",
+              "Real-time call summaries pushed to your pipeline"
+            ]
+          },
+          {
+            name: "Lead Qualification",
+            items: [
+              "AI asks the right questions to qualify: service area, job type, urgency, budget, and fit",
+              "Lead scoring based on conversation signals and engagement",
+              "Automatic disqualification of bad-fit leads to save your team's time",
+              "Custom qualification criteria tailored to your business"
+            ]
+          },
+          {
+            name: "Appointment Booking",
+            items: [
+              "Book jobs directly into your calendar in real time",
+              "Sync with your availability and scheduling rules",
+              "Automated confirmation and reminder sequences",
+              "Reschedule and cancellation handling"
+            ]
+          },
+          {
+            name: "Lead Routing & Workflow Automation",
+            items: [
+              "Route each lead to the right person, team, or workflow",
+              "Rules based on location, job type, priority, or deal size",
+              "Trigger automated actions: move deals, update stages, assign follow-ups",
+              "No human intervention required for standard pipeline movements"
+            ]
+          },
+          {
+            name: "Call, SMS & Email Pipeline Nurturing",
+            items: [
+              "Multi-channel follow-up sequences (call, text, email)",
+              "Continuously re-engage unconverted leads",
+              "Revive cold leads with personalized outreach",
+              "Push every opportunity toward booking"
+            ]
+          },
+          {
+            name: "Pipeline Reporting & CRM Sync",
+            items: [
+              "Real-time pipeline visibility: metrics, conversion data, deal stages",
+              "No manual reporting needed — dashboards update automatically",
+              "Log every interaction, update lead status, and sync seamlessly",
+              "Integrates with HubSpot, HighLevel, ServiceTitan, and more",
+              "Or use MEGA's built-in CRM at no additional cost"
+            ]
+          },
+          {
+            name: "Conversion Optimization",
+            items: [
+              "Analyze conversations, bookings, and lost leads for patterns",
+              "Improve scripts, timing, and workflows based on data",
+              "Track conversion rates by source, campaign, and rep",
+              "Continuous improvement — the AI gets smarter over time"
+            ]
+          }
+        ],
+        timeline: [
+          {
+            phase: "Day 0-30 (Setup & Integration)",
+            items: [
+              "Comprehensive onboarding and pipeline workflow mapping",
+              "CRM integration setup (your existing CRM or MEGA's built-in)",
+              "Call handling configuration and routing rules",
+              "Lead qualification criteria and scoring model setup",
+              "Appointment booking and calendar sync configuration",
+              "Initial nurturing sequences deployed (call, SMS, email)",
+              "Pipeline stages and automation rules configured",
+              "Team training on dashboard and reporting tools"
+            ]
+          },
+          {
+            phase: "Day 31-60 (Optimization & Scaling)",
+            items: [
+              "Review first 30 days of pipeline data and conversion rates",
+              "Refine qualification criteria based on real lead interactions",
+              "Optimize nurturing sequences based on engagement data",
+              "Expand automation rules for edge cases and new workflows",
+              "A/B test scripts and follow-up timing"
+            ]
+          },
+          {
+            phase: "Day 61-90 (Advanced Automation)",
+            items: [
+              "Deploy advanced routing logic and priority-based escalation",
+              "Launch re-engagement campaigns for cold pipeline leads",
+              "Implement conversion optimization recommendations",
+              "Full pipeline health review and strategic adjustments"
+            ]
+          },
+          {
+            phase: "Ongoing (Month 4+)",
+            items: [
+              "Monthly pipeline performance reviews with dedicated manager",
+              "Continuous workflow refinement and automation expansion",
+              "Script and sequence optimization based on conversion data",
+              "Quarterly strategy sessions to align with business goals"
             ]
           }
         ]

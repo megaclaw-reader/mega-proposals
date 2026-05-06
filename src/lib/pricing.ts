@@ -26,6 +26,12 @@ const PRICING_TABLE = {
     quarterly: 339,
     monthly: 399,
   },
+  crm: {
+    annual: 699,
+    bi_annual: 749,
+    quarterly: 849,
+    monthly: 999,
+  },
 };
 
 const AGENT_NAMES = {
@@ -33,6 +39,7 @@ const AGENT_NAMES = {
   paid_ads: 'Paid Ads Agent',
   seo_paid_combo: 'SEO & Paid Ads Agent',
   website: 'Website Agent',
+  crm: 'CRM Agent',
 };
 
 export function calculatePricing(
@@ -81,6 +88,19 @@ export function calculatePricing(
       });
       subtotal += paidAdsPrice;
     }
+  }
+
+  // CRM agent is always separate
+  const hasCRM = selectedAgents.includes('crm');
+  if (hasCRM) {
+    const crmPrice = PRICING_TABLE.crm[contractTerm];
+    agents.push({
+      agent: 'crm' as Agent,
+      name: AGENT_NAMES.crm,
+      basePrice: crmPrice,
+      finalPrice: crmPrice,
+    });
+    subtotal += crmPrice;
   }
 
   // Website agent is always separate (addon)

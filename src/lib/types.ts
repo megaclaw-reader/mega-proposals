@@ -1,4 +1,4 @@
-export type Agent = 'seo' | 'paid_ads' | 'website';
+export type Agent = 'seo' | 'paid_ads' | 'website' | 'crm';
 
 export type Template = 'leads' | 'ecom';
 

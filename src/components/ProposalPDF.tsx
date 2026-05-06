@@ -149,6 +149,7 @@ const AGENT_ICON_LABELS: Record<string, string> = {
   seo: 'SEO',
   paid_ads: 'ADS',
   website: 'WEB',
+  crm: 'CRM',
 };
 
 function pairUp<T>(arr: T[]): T[][] {
@@ -318,6 +319,7 @@ export function ProposalPDF({ proposal }: { proposal: Proposal }) {
                 seo: 'Search & Visibility',
                 paid_ads: 'Paid Advertising',
                 website: 'Website & Conversions',
+                crm: 'CRM & Lead Management',
                 general: 'Growth & Strategy',
               };
 
