@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Agent, Template, ContractTerm, TermOption } from '@/lib/types';
 import { calculatePricing, formatPrice, getTermDisplayName, getTermMonths } from '@/lib/pricing';
 import { encodeProposal } from '@/lib/encode';
-import { extractFromTranscript, fetchFirefliesTranscript } from '@/lib/transcript';
+import { fetchFirefliesTranscript } from '@/lib/transcript';
 
 const AVAILABLE_TERMS: ContractTerm[] = ['annual', 'bi_annual', 'quarterly'];
 
@@ -84,10 +84,23 @@ export default function CreateProposal() {
       }
 
       if (transcript) {
-        personalizedContent = extractFromTranscript(transcript, formData.selectedAgents);
-        // Only include if we extracted meaningful content
-        if (personalizedContent.keyChallenges.length === 0 && !personalizedContent.companySituation) {
-          personalizedContent = undefined;
+        // Use AI-powered extraction via server-side Anthropic API
+        try {
+          const analyzeRes = await fetch('/api/transcript/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ transcript, selectedAgents: formData.selectedAgents }),
+          });
+          if (analyzeRes.ok) {
+            const { analysis } = await analyzeRes.json();
+            if (analysis && (analysis.keyChallenges?.length > 0 || analysis.companySituation)) {
+              personalizedContent = analysis;
+            }
+          } else {
+            console.error('Transcript analysis failed:', await analyzeRes.text());
+          }
+        } catch (err) {
+          console.error('Transcript analysis error:', err);
         }
       }
 

@@ -81,8 +81,40 @@ export async function POST(req: NextRequest) {
     if (transcript.summary?.shorthand_bullet) {
       parts.push(transcript.summary.shorthand_bullet);
     }
-    if (parts.length === 0 && transcript.sentences?.length > 0) {
+    if (parts.length === 0 && transcript.sentences?.length > 1) {
+      // Use raw sentences if summary not available
       parts.push(transcript.sentences.map((s: { text: string }) => s.text).join(' '));
+    }
+
+    // If GraphQL returned nothing, try web scraping the public page
+    if (parts.length === 0) {
+      try {
+        const pageRes = await fetch(`https://app.fireflies.ai/view/${transcriptId}`, {
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+        });
+        if (pageRes.ok) {
+          const html = await pageRes.text();
+          const nextDataMatch = html.match(/__NEXT_DATA__.*?>(.*?)<\/script>/);
+          if (nextDataMatch) {
+            const pageData = JSON.parse(nextDataMatch[1]);
+            const pageProps = pageData?.props?.pageProps || {};
+            
+            // Try summaryMeetingNoteComment first (richest content)
+            const summaryComment = pageProps.summaryMeetingNoteComment?.comment;
+            if (summaryComment) {
+              parts.push(summaryComment);
+            }
+            
+            // Also check for inline summary gist
+            const gist = pageProps.initialMeetingNote?.summary?.gist;
+            if (gist && !summaryComment) {
+              parts.push(gist);
+            }
+          }
+        }
+      } catch (scrapeErr) {
+        console.error('Fireflies page scrape fallback failed:', scrapeErr);
+      }
     }
 
     const text = parts.join('\n\n');
